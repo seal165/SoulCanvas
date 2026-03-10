@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
@@ -48,3 +49,7 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+=======
+# SoulCanvas
+Project eksperimen visual emosi menjadi seni digital
+>>>>>>> 697619f8ef37f1e0554fb78dd925248a07b42e4d
