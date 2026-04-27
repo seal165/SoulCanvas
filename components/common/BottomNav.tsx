@@ -4,20 +4,50 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 
-export const BottomNav = () => {
+interface BottomNavProps {
+  activeTab?: 'home' | 'compose' | 'gallery' | 'capsule';
+}
+
+export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { bottom: Platform.OS === 'ios' ? insets.bottom + 6 : 16 }]}>
       <View style={styles.inner}>
-        <TouchableOpacity style={styles.activeItem}>
-          <Ionicons name="home" size={28} color={Colors.secondary} />
+        {/* Home */}
+        <TouchableOpacity style={[styles.navItem, activeTab === 'home' && styles.activeItem]} activeOpacity={0.7}>
+          <Ionicons
+            name="home"
+            size={28}
+            color={activeTab === 'home' ? Colors.secondary : `${Colors.primary}80`}
+          />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.inactiveItem}>
-          <MaterialIcons name="subscriptions" size={28} color={`${Colors.primary}80`} />
+
+        {/* Compose */}
+        <TouchableOpacity style={[styles.navItem, activeTab === 'compose' && styles.activeItem]} activeOpacity={0.7}>
+          <MaterialIcons
+            name="brush"
+            size={28}
+            color={activeTab === 'compose' ? Colors.secondary : `${Colors.primary}80`}
+          />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.inactiveItem}>
-          <MaterialIcons name="auto-stories" size={28} color={`${Colors.primary}80`} />
+
+        {/* Gallery */}
+        <TouchableOpacity style={[styles.navItem, activeTab === 'gallery' && styles.activeItem]} activeOpacity={0.7}>
+          <MaterialIcons
+            name="auto-stories"
+            size={28}
+            color={activeTab === 'gallery' ? Colors.secondary : `${Colors.primary}80`}
+          />
+        </TouchableOpacity>
+
+        {/* Capsule */}
+        <TouchableOpacity style={[styles.navItem, activeTab === 'capsule' && styles.activeItem]} activeOpacity={0.7}>
+          <MaterialIcons
+            name="history"
+            size={28}
+            color={activeTab === 'capsule' ? Colors.secondary : `${Colors.primary}80`}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -39,7 +69,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: 32,
     width: '90%',
-    maxWidth: 400,
+    maxWidth: 500,
     paddingVertical: 8,
     paddingHorizontal: 8,
     shadowColor: '#1c1c17',
@@ -48,18 +78,14 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 4,
   },
-  activeItem: {
+  navItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${Colors.secondaryContainer}66`,
-    borderRadius: 999,
     padding: 12,
+    borderRadius: 999,
     transform: [{ scale: 0.9 }],
   },
-  inactiveItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    transform: [{ scale: 0.9 }],
+  activeItem: {
+    backgroundColor: `${Colors.secondaryContainer}66`,
   },
 });

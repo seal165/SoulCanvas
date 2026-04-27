@@ -19,7 +19,15 @@ export const Colors = {
   surfaceContainerLowest: '#ffffff',
   error: '#ba1a1a',
   outline: '#7f766a',
+  outlineVariant: '#d1c5b7',  // Ditambahkan
   primaryContainer: '#a2afc1',
   onPrimaryContainer: '#364251',
+  primaryFixedDim: '#bbc7da',
   secondaryFixedDim: '#e2c195',
+  secondaryContainerLight: '#fddaac',
+  onSecondaryContainerLight: '#785e39',
+  background: '#fdf9f1',
+  onBackground: '#1c1c17',
 } as const;
+
+export type ColorKey = keyof typeof Colors;

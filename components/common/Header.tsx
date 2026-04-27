@@ -10,11 +10,14 @@ export const Header = () => {
 
   return (
     <View style={[styles.header, { top: 0, paddingTop: insets.top, height: headerHeight }]}>
-      <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.leftIcon} activeOpacity={0.7}>
         <MaterialIcons name="auto-awesome" size={24} color={Colors.primary} />
+        <Text style={styles.logoText}>SoulCanvas</Text>
       </TouchableOpacity>
+
       <Text style={styles.title}>SoulCanvas</Text>
-      <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+
+      <TouchableOpacity style={styles.rightIcon} activeOpacity={0.7}>
         <Ionicons name="person-circle-outline" size={28} color={Colors.primary} />
       </TouchableOpacity>
     </View>
@@ -33,12 +36,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     backgroundColor: 'rgba(253, 249, 241, 0.7)',
   },
-  iconButton: { padding: 8 },
+  leftIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoText: {
+    fontFamily: Platform.OS === 'ios' ? 'Manrope' : 'sans-serif',
+    fontSize: 14,
+    fontWeight: '300',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: Colors.primary,
+  },
   title: {
     fontFamily: Platform.OS === 'ios' ? 'Manrope' : 'sans-serif',
     fontSize: 24,
     fontWeight: '300',
     letterSpacing: -0.48,
     color: Colors.primary,
+  },
+  rightIcon: {
+    padding: 8,
   },
 });

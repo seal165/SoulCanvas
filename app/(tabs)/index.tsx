@@ -6,11 +6,12 @@ import { Header, BottomNav } from '@/components/common';
 import { HeroSection, ActionButtons, BentoCards } from '@/components/home';
 import { Colors } from '@/constants/Colors';
 
+const { width } = Dimensions.get('window');
+
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
-  const { width } = Dimensions.get('window');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -35,7 +36,7 @@ export default function HomeTab() {
         <BentoCards />
       </ScrollView>
 
-      <BottomNav />
+      <BottomNav activeTab="home" />
     </SafeAreaView>
   );
 }
