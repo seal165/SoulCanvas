@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, Dimensions, Platform, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Header, BottomNav } from '@/components/common';
@@ -12,13 +12,24 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
+  
+  // Animasi fade in untuk seluruh konten
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
       <StatusBar style="dark" backgroundColor={Colors.surface} />
       <Header />
 
-      <ScrollView
+      <Animated.ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           {
@@ -27,6 +38,7 @@ export default function HomeScreen() {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        style={{ opacity: fadeAnim }}
       >
         <View style={[styles.bgBlur1, { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, right: -width * 0.2, top: width * 0.25 }]} />
         <View style={[styles.bgBlur2, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, left: -width * 0.2, bottom: width * 0.25 }]} />
@@ -34,7 +46,7 @@ export default function HomeScreen() {
         <HeroSection />
         <ActionButtons />
         <BentoCards />
-      </ScrollView>
+      </Animated.ScrollView>
 
       <BottomNav activeTab="home" />
     </SafeAreaView>

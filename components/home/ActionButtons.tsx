@@ -1,22 +1,45 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 
 export const ActionButtons = () => {
   const router = useRouter();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 5,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 5,
+    }).start();
+  };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.createButton} 
-        activeOpacity={0.8}
-        onPress={() => router.push('/(tabs)/compose')}
-      >
-        <MaterialIcons name="brush" size={24} color={Colors.onPrimary} />
-        <Text style={styles.createButtonText}>Start Creating</Text>
-      </TouchableOpacity>
+      <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%' }}>
+        <TouchableOpacity 
+          style={styles.createButton} 
+          activeOpacity={0.8}
+          onPress={() => router.push('/(tabs)/compose')}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          <MaterialIcons name="brush" size={24} color={Colors.onPrimary} />
+          <Text style={styles.createButtonText}>Start Creating</Text>
+        </TouchableOpacity>
+      </Animated.View>
       <View style={styles.secondaryRow}>
         <TouchableOpacity 
           style={styles.galleryButton} 
@@ -38,7 +61,7 @@ export const ActionButtons = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { width: '100%', maxWidth: 320, marginBottom: 40 },
+  container: { width: '100%', maxWidth: 320, marginBottom: 40, alignItems: 'center' },
   createButton: {
     flexDirection: 'row',
     backgroundColor: Colors.primary,
@@ -53,6 +76,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 24,
     elevation: 4,
+    width: '100%',
   },
   createButtonText: { fontSize: 18, fontWeight: '500', color: Colors.onPrimary },
   secondaryRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },

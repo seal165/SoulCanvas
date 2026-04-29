@@ -1,12 +1,60 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Image, StyleSheet, Animated } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 const IMAGE_URL = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCnepVMPtd3xXkCXjBoyxojIcRzopmGXUd15AK9YtDffdYuLgyAmhRZekAhpGNlgUvdzDFUvvsp6LNk46KuMSFscge2Tz56AxhB7gmenA1mlJSgKcJzRSEQlT-U4cIVPZ2rAXVaRnVoauJJ9XwO-fBGt-r-biMwmdoovVMITqRPIdDYzi_AW-BM3FhH-97Dy75DJF8BNDgrVnn6gZz8P0lWV9pxCORdMHiytujtTiAynGn7dFta7z3bThJBr0I1DR-r0Cvsk9ThTbtY';
 
 export const HeroSection = () => {
+  // Animasi Fade In
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, scaleAnim]);
+
+  // Animasi Pulse untuk chip
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
   return (
-    <View style={styles.container}>
+    <Animated.View 
+      style={[
+        styles.container, 
+        { 
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }]
+        }
+      ]}
+    >
       <View style={styles.textContainer}>
         <Text style={styles.label}>Emotional Reflection</Text>
         <Text style={styles.title}>
@@ -18,12 +66,12 @@ export const HeroSection = () => {
         <View style={styles.imageWrapper}>
           <Image source={{ uri: IMAGE_URL }} style={styles.image} resizeMode="cover" />
         </View>
-        <View style={styles.chip}>
+        <Animated.View style={[styles.chip, { transform: [{ scale: pulseAnim }] }]}>
           <View style={styles.chipDot} />
           <Text style={styles.chipText}>Currently Reflecting</Text>
-        </View>
+        </Animated.View>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

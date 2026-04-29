@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -14,6 +14,27 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  
+  // Animasi spring untuk efek ngambang
+  const translateY = useRef(new Animated.Value(100)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Animasi spring untuk muncul dari bawah
+    Animated.parallel([
+      Animated.spring(translateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [translateY, opacityAnim]);
 
   const navigateTo = (tab: TabRoute) => {
     switch (tab) {
@@ -33,7 +54,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
   };
 
   return (
-    <View style={[styles.container, { bottom: Platform.OS === 'ios' ? insets.bottom + 16 : 16 }]}>
+    <Animated.View 
+      style={[
+        styles.container, 
+        { 
+          bottom: Platform.OS === 'ios' ? insets.bottom + 30 : 30,
+          transform: [{ translateY }],
+          opacity: opacityAnim,
+        }
+      ]}
+    >
       <View style={styles.inner}>
         <TouchableOpacity 
           style={[styles.navItem, activeTab === 'home' && styles.activeItem]} 
@@ -83,7 +113,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
           />
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -101,15 +131,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 32,
-    width: '90%',
+    width: '85%',
     maxWidth: 500,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    shadowColor: '#1c1c17',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   navItem: {
     alignItems: 'center',
