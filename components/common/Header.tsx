@@ -1,12 +1,22 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { usePathname } from 'expo-router';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const Header = () => {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   const headerHeight = insets.top + 80;
+
+  const getTitle = () => {
+    if (pathname === '/' || pathname === '/(tabs)') return 'SoulCanvas';
+    if (pathname === '/compose') return 'Compose';
+    if (pathname === '/gallery') return 'Gallery';
+    if (pathname === '/capsule') return 'Time Capsule';
+    return 'SoulCanvas';
+  };
 
   return (
     <View style={[styles.header, { top: 0, paddingTop: insets.top, height: headerHeight }]}>
@@ -15,7 +25,7 @@ export const Header = () => {
         <Text style={styles.logoText}>SoulCanvas</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>SoulCanvas</Text>
+      <Text style={styles.title}>{getTitle()}</Text>
 
       <TouchableOpacity style={styles.rightIcon} activeOpacity={0.7}>
         <Ionicons name="person-circle-outline" size={28} color={Colors.primary} />

@@ -1,20 +1,35 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 
 export const ActionButtons = () => {
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.createButton} activeOpacity={0.8}>
+      <TouchableOpacity 
+        style={styles.createButton} 
+        activeOpacity={0.8}
+        onPress={() => router.push('/(tabs)/compose')}
+      >
         <MaterialIcons name="brush" size={24} color={Colors.onPrimary} />
         <Text style={styles.createButtonText}>Start Creating</Text>
       </TouchableOpacity>
       <View style={styles.secondaryRow}>
-        <TouchableOpacity style={styles.galleryButton} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={styles.galleryButton} 
+          activeOpacity={0.7}
+          onPress={() => router.push('/(tabs)/gallery')}
+        >
           <Text style={styles.galleryButtonText}>View Gallery</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.historyButton} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={styles.historyButton} 
+          activeOpacity={0.7}
+          onPress={() => router.push('/(tabs)/capsule')}
+        >
           <MaterialIcons name="history-toggle-off" size={24} color={Colors.secondary} />
         </TouchableOpacity>
       </View>

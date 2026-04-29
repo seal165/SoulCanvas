@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Header, BottomNav } from '@/components/common';
 import { Colors } from '@/constants/Colors';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -12,6 +13,7 @@ const GALLERY_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9IL5
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
 
@@ -30,17 +32,13 @@ export default function GalleryScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Background Blur Elements */}
         <View style={[styles.bgBlur1, { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, right: -width * 0.2, top: width * 0.25 }]} />
         <View style={[styles.bgBlur2, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, left: -width * 0.2, bottom: width * 0.25 }]} />
 
-        {/* Result Header */}
         <View style={styles.resultHeader}>
           <View style={styles.resultHeaderLeft}>
             <Text style={styles.resultBadge}>Manifestation Complete</Text>
-            <Text style={styles.resultTitle}>
-              The Echo of {'\n'}Your Inner Silence
-            </Text>
+            <Text style={styles.resultTitle}>The Echo of {'\n'}Your Inner Silence</Text>
           </View>
           <View style={styles.resultHeaderRight}>
             <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
@@ -54,7 +52,6 @@ export default function GalleryScreen() {
           </View>
         </View>
 
-        {/* Hero Artwork Section */}
         <View style={styles.artworkSection}>
           <View style={styles.artworkWrapper}>
             <View style={styles.artworkInner}>
@@ -63,19 +60,15 @@ export default function GalleryScreen() {
             </View>
             <View style={styles.artworkCaption}>
               <Text style={styles.artworkEdition}>SoulCanvas Edition 001</Text>
-              <Text style={styles.artworkQuote}>
-                &quot;A journey through the subconscious&quot;
-              </Text>
+              <Text style={styles.artworkQuote}>&quot;A journey through the subconscious&quot;</Text>
             </View>
           </View>
         </View>
 
-        {/* Action Grid */}
         <View style={styles.actionGrid}>
           <TouchableOpacity style={styles.saveButton} activeOpacity={0.8}>
             <Text style={styles.saveButtonText}>Save Artwork</Text>
           </TouchableOpacity>
-
           <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.actionIconGroup} activeOpacity={0.7}>
               <View style={styles.iconCircle}>
@@ -83,7 +76,6 @@ export default function GalleryScreen() {
               </View>
               <Text style={styles.actionIconText}>Hi-Res Export</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.actionIconGroup} activeOpacity={0.7}>
               <View style={styles.iconCircle}>
                 <MaterialIcons name="brush" size={20} color={Colors.secondary} />
@@ -91,31 +83,23 @@ export default function GalleryScreen() {
               <Text style={styles.actionIconText}>Apply Style</Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity style={styles.backHomeButton} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.backHomeButton} activeOpacity={0.7} onPress={() => router.push('/(tabs)')}>
             <Text style={styles.backHomeText}>Back to Home</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Aesthetic Details */}
         <View style={styles.detailsGrid}>
           <View style={styles.detailCard}>
             <Text style={styles.detailTitle}>Tonal Balance</Text>
-            <Text style={styles.detailText}>
-              The palette leverages organic earth foundations (#FDF9F1) contrasted by intellectual navy tones (#535F6F).
-            </Text>
+            <Text style={styles.detailText}>The palette leverages organic earth foundations (#FDF9F1) contrasted by intellectual navy tones (#535F6F).</Text>
           </View>
           <View style={styles.detailCard}>
             <Text style={styles.detailTitle}>Geometric Soul</Text>
-            <Text style={styles.detailText}>
-              Asymmetric distribution of visual weight creates a breathing composition that evolves with every glance.
-            </Text>
+            <Text style={styles.detailText}>Asymmetric distribution of visual weight creates a breathing composition that evolves with every glance.</Text>
           </View>
           <View style={styles.detailCard}>
             <Text style={styles.detailTitle}>Materiality</Text>
-            <Text style={styles.detailText}>
-              Rendered using 2048-bit neural pathways to ensure every gold accent reflects the warmth of your intent.
-            </Text>
+            <Text style={styles.detailText}>Rendered using 2048-bit neural pathways to ensure every gold accent reflects the warmth of your intent.</Text>
           </View>
         </View>
       </ScrollView>

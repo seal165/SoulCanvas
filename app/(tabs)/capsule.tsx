@@ -1,10 +1,10 @@
-import { BottomNav, Header } from '@/components/common';
-import { Colors } from '@/constants/Colors';
-import { MaterialIcons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Header, BottomNav } from '@/components/common';
+import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
 
@@ -35,11 +35,9 @@ export default function CapsuleScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Background Blur Elements */}
         <View style={[styles.bgBlur1, { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, right: -width * 0.2, top: width * 0.25 }]} />
         <View style={[styles.bgBlur2, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, left: -width * 0.2, bottom: width * 0.25 }]} />
 
-        {/* Hero Narrative */}
         <View style={styles.heroSection}>
           <Text style={styles.heroBadge}>Reflection Portal</Text>
           <View style={styles.heroHeader}>
@@ -50,9 +48,7 @@ export default function CapsuleScreen() {
           </View>
         </View>
 
-        {/* Capsule Editor */}
         <View style={styles.editorGrid}>
-          {/* Text Input Area */}
           <View style={[styles.textAreaContainer]}>
             <Text style={styles.inputLabel}>Your Message</Text>
             <TextInput
@@ -70,9 +66,7 @@ export default function CapsuleScreen() {
             </View>
           </View>
 
-          {/* Sidebar */}
           <View style={styles.sidebar}>
-            {/* Date Picker Card */}
             <View style={[styles.dateCard]}>
               <Text style={styles.dateLabel}>Seal Until</Text>
               <View style={styles.dateInputWrapper}>
@@ -85,25 +79,16 @@ export default function CapsuleScreen() {
                 />
                 <MaterialIcons name="calendar-today" size={24} color={Colors.secondaryFixedDim} />
               </View>
-
               <View style={styles.quickSelect}>
                 <Text style={styles.quickSelectLabel}>Quick Select</Text>
                 <View style={styles.quickSelectButtons}>
                   {quickSelectDates.map((label, index) => (
                     <TouchableOpacity
                       key={index}
-                      style={[
-                        styles.quickSelectButton,
-                        label === '5 Years' && styles.quickSelectButtonActive,
-                      ]}
+                      style={[styles.quickSelectButton, label === '5 Years' && styles.quickSelectButtonActive]}
                       activeOpacity={0.7}
                     >
-                      <Text
-                        style={[
-                          styles.quickSelectButtonText,
-                          label === '5 Years' && styles.quickSelectButtonTextActive,
-                        ]}
-                      >
+                      <Text style={[styles.quickSelectButtonText, label === '5 Years' && styles.quickSelectButtonTextActive]}>
                         {label}
                       </Text>
                     </TouchableOpacity>
@@ -112,33 +97,27 @@ export default function CapsuleScreen() {
               </View>
             </View>
 
-            {/* Abstract Visual Anchor */}
             <View style={styles.imageCard}>
               <Image source={{ uri: CAPSULE_IMAGE }} style={styles.capsuleImage} resizeMode="cover" />
               <View style={styles.imageOverlay} />
               <View style={styles.imageCaption}>
-                <Text style={styles.imageCaptionText}>
-                  Your words will remain encrypted and silent until the chosen horizon.
-                </Text>
+                <Text style={styles.imageCaptionText}>Your words will remain encrypted and silent until the chosen horizon.</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Actions */}
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.saveButton} activeOpacity={0.8}>
             <Text style={styles.saveButtonText}>Save Capsule</Text>
             <MaterialIcons name="arrow-forward" size={18} color={Colors.onPrimary} />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.viewButton} activeOpacity={0.7}>
             <MaterialIcons name="visibility" size={18} color={Colors.secondary} />
             <Text style={styles.viewButtonText}>View Capsules</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Recently Sealed Section */}
         <View style={styles.recentSection}>
           <Text style={styles.recentTitle}>Recently Sealed</Text>
           <View style={styles.recentGrid}>
@@ -149,7 +128,6 @@ export default function CapsuleScreen() {
               </View>
               <Text style={styles.recentCardText}>Dreams of the coast...</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.recentCard} activeOpacity={0.7}>
               <View style={styles.recentCardHeader}>
                 <MaterialIcons name="lock" size={20} color={Colors.secondaryFixedDim} />
@@ -157,7 +135,6 @@ export default function CapsuleScreen() {
               </View>
               <Text style={styles.recentCardText}>To the older, wiser me.</Text>
             </TouchableOpacity>
-
             <View style={styles.emptyCard}>
               <Text style={styles.emptyCardText}>Empty Slot</Text>
             </View>
@@ -176,51 +153,16 @@ const styles = StyleSheet.create({
   bgBlur1: { position: 'absolute', backgroundColor: Colors.tertiaryContainer + '33' },
   bgBlur2: { position: 'absolute', backgroundColor: Colors.primaryContainer + '1A' },
   heroSection: { marginBottom: 40, marginTop: 20 },
-  heroBadge: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-    color: Colors.secondary,
-    marginBottom: 16,
-  },
+  heroBadge: { fontSize: 11, fontWeight: '500', letterSpacing: 1.1, textTransform: 'uppercase', color: Colors.secondary, marginBottom: 16 },
   heroHeader: { gap: 16 },
   heroTitle: { fontSize: 36, fontWeight: '300', letterSpacing: -0.72, color: Colors.onSurface },
   heroQuote: { fontSize: 14, fontStyle: 'italic', color: Colors.onSurfaceVariant, maxWidth: 280, lineHeight: 20 },
   editorGrid: { gap: 24, marginBottom: 32 },
-  textAreaContainer: {
-    backgroundColor: Colors.surfaceContainerLowest,
-    padding: 32,
-    borderRadius: 12,
-    shadowColor: '#1c1c17',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 24,
-    elevation: 2,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: Colors.secondary,
-    marginBottom: 16,
-  },
-  textInput: {
-    minHeight: 200,
-    fontSize: 18,
-    fontWeight: '300',
-    color: Colors.onSurface,
-    padding: 0,
-  },
+  textAreaContainer: { backgroundColor: Colors.surfaceContainerLowest, padding: 32, borderRadius: 12, shadowColor: '#1c1c17', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 24, elevation: 2 },
+  inputLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.secondary, marginBottom: 16 },
+  textInput: { minHeight: 200, fontSize: 18, fontWeight: '300', color: Colors.onSurface, padding: 0 },
   inputFooter: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 24 },
-  inputFooterText: {
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: Colors.onSurfaceVariant + '66',
-  },
+  inputFooterText: { fontSize: 10, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.onSurfaceVariant + '66' },
   sidebar: { gap: 32 },
   dateCard: { backgroundColor: Colors.surfaceContainerLow, padding: 24, borderRadius: 12, gap: 24 },
   dateLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.secondary },

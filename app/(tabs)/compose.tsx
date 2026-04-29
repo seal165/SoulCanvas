@@ -5,11 +5,13 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Header, BottomNav } from '@/components/common';
 import { Colors } from '@/constants/Colors';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function ComposeScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [feeling, setFeeling] = useState('');
 
   const headerHeight = insets.top + 80;
@@ -30,17 +32,14 @@ export default function ComposeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Decorative Background Blur */}
         <View style={[styles.bgBlurRight, { width: width * 0.5, height: width * 0.5, borderRadius: width * 0.25, right: -width * 0.2, top: -width * 0.2 }]} />
         <View style={[styles.bgBlurLeft, { width: width * 0.4, height: width * 0.4, borderRadius: width * 0.2, left: -width * 0.2, bottom: -width * 0.1 }]} />
 
-        {/* Header Section */}
         <View style={styles.headerSection}>
           <Text style={styles.title}>Compose your feeling</Text>
           <Text style={styles.subtitle}>Translate your inner landscape into a visual sanctuary.</Text>
         </View>
 
-        {/* Input Section */}
         <View style={styles.inputSection}>
           <View style={styles.inputCard}>
             <TextInput
@@ -52,7 +51,6 @@ export default function ComposeScreen() {
               onChangeText={setFeeling}
               textAlignVertical="top"
             />
-
             <View style={styles.toolsRow}>
               <View style={styles.voiceGroup}>
                 <TouchableOpacity style={styles.micButton} activeOpacity={0.7}>
@@ -60,7 +58,6 @@ export default function ComposeScreen() {
                 </TouchableOpacity>
                 <Text style={styles.voiceText}>Voice Composition</Text>
               </View>
-
               <View style={styles.tagsGroup}>
                 <Text style={styles.tag}>Reflective</Text>
                 <Text style={styles.tag}>Deep</Text>
@@ -69,23 +66,18 @@ export default function ComposeScreen() {
           </View>
         </View>
 
-        {/* Action Section */}
         <View style={styles.actionSection}>
-          <TouchableOpacity style={styles.generateButton} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.generateButton} activeOpacity={0.8} onPress={() => router.push('/(tabs)/gallery')}>
             <Text style={styles.generateButtonText}>Generate Art</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.backButton} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.backButton} activeOpacity={0.7} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Artistic Quote Footer */}
         <View style={styles.footer}>
           <Text style={styles.quoteMark}>“</Text>
-          <Text style={styles.quoteText}>
-            Art washes away from the soul the dust of everyday life.
-          </Text>
+          <Text style={styles.quoteText}>Art washes away from the soul the dust of everyday life.</Text>
         </View>
       </ScrollView>
 

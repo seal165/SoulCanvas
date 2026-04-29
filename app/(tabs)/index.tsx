@@ -8,7 +8,7 @@ import { Colors } from '@/constants/Colors';
 
 const { width } = Dimensions.get('window');
 
-export default function HomeTab() {
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
@@ -44,12 +44,6 @@ export default function HomeTab() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.surface },
   scrollContent: { alignItems: 'center', paddingHorizontal: 24 },
-  bgBlur1: {
-    position: 'absolute',
-    backgroundColor: Colors.tertiaryContainer + '33',
-  },
-  bgBlur2: {
-    position: 'absolute',
-    backgroundColor: Colors.primaryContainer + '1A',
-  },
+  bgBlur1: { position: 'absolute', backgroundColor: Colors.tertiaryContainer + '33' },
+  bgBlur2: { position: 'absolute', backgroundColor: Colors.primaryContainer + '1A' },
 });
