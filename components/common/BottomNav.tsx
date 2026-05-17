@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Href } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 
-type TabRoute = 'home' | 'compose' | 'gallery' | 'capsule';
+type TabRoute = 'home' | 'compose' | 'gallery' | 'capsule' | 'profile';
 
 interface BottomNavProps {
   activeTab?: TabRoute;
@@ -15,12 +15,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   
-  // Animasi spring untuk efek ngambang
   const translateY = useRef(new Animated.Value(100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animasi spring untuk muncul dari bawah
     Animated.parallel([
       Animated.spring(translateY, {
         toValue: 0,
@@ -39,16 +37,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
   const navigateTo = (tab: TabRoute) => {
     switch (tab) {
       case 'home':
-        router.push('/(tabs)');
+        router.push('/(tabs)' as Href);
         break;
       case 'compose':
-        router.push('/(tabs)/compose');
+        router.push('/(tabs)/compose' as Href);
         break;
       case 'gallery':
-        router.push('/(tabs)/gallery');
+        router.push('/(tabs)/gallery' as Href);
         break;
       case 'capsule':
-        router.push('/(tabs)/capsule');
+        router.push('/(tabs)/capsule' as Href);
+        break;
+      case 'profile':
+        router.push('/(tabs)/profile' as Href);
         break;
     }
   };
@@ -65,52 +66,49 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'home' }) => {
       ]}
     >
       <View style={styles.inner}>
+        {/* Home */}
         <TouchableOpacity 
           style={[styles.navItem, activeTab === 'home' && styles.activeItem]} 
           activeOpacity={0.7}
           onPress={() => navigateTo('home')}
         >
-          <Ionicons
-            name="home"
-            size={24}
-            color={activeTab === 'home' ? Colors.secondary : `${Colors.primary}80`}
-          />
+          <Ionicons name="home" size={24} color={activeTab === 'home' ? Colors.secondary : `${Colors.primary}80`} />
         </TouchableOpacity>
 
+        {/* Compose */}
         <TouchableOpacity 
           style={[styles.navItem, activeTab === 'compose' && styles.activeItem]} 
           activeOpacity={0.7}
           onPress={() => navigateTo('compose')}
         >
-          <MaterialIcons
-            name="brush"
-            size={24}
-            color={activeTab === 'compose' ? Colors.secondary : `${Colors.primary}80`}
-          />
+          <MaterialIcons name="brush" size={24} color={activeTab === 'compose' ? Colors.secondary : `${Colors.primary}80`} />
         </TouchableOpacity>
 
+        {/* Gallery */}
         <TouchableOpacity 
           style={[styles.navItem, activeTab === 'gallery' && styles.activeItem]} 
           activeOpacity={0.7}
           onPress={() => navigateTo('gallery')}
         >
-          <MaterialIcons
-            name="auto-stories"
-            size={24}
-            color={activeTab === 'gallery' ? Colors.secondary : `${Colors.primary}80`}
-          />
+          <MaterialIcons name="auto-stories" size={24} color={activeTab === 'gallery' ? Colors.secondary : `${Colors.primary}80`} />
         </TouchableOpacity>
 
+        {/* Capsule */}
         <TouchableOpacity 
           style={[styles.navItem, activeTab === 'capsule' && styles.activeItem]} 
           activeOpacity={0.7}
           onPress={() => navigateTo('capsule')}
         >
-          <MaterialIcons
-            name="history"
-            size={24}
-            color={activeTab === 'capsule' ? Colors.secondary : `${Colors.primary}80`}
-          />
+          <MaterialIcons name="history" size={24} color={activeTab === 'capsule' ? Colors.secondary : `${Colors.primary}80`} />
+        </TouchableOpacity>
+
+        {/* Profile */}
+        <TouchableOpacity 
+          style={[styles.navItem, activeTab === 'profile' && styles.activeItem]} 
+          activeOpacity={0.7}
+          onPress={() => navigateTo('profile')}
+        >
+          <Ionicons name="person-outline" size={24} color={activeTab === 'profile' ? Colors.secondary : `${Colors.primary}80`} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -131,10 +129,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 32,
-    width: '85%',
-    maxWidth: 500,
+    width: '90%',
+    maxWidth: 550,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -146,7 +144,7 @@ const styles = StyleSheet.create({
   navItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 8,
     borderRadius: 999,
   },
   activeItem: {

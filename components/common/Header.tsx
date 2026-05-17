@@ -1,5 +1,5 @@
 import { Colors } from '@/constants/Colors';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -15,6 +15,11 @@ export const Header = () => {
     if (pathname === '/compose') return 'Compose';
     if (pathname === '/gallery') return 'Gallery';
     if (pathname === '/capsule') return 'Time Capsule';
+    if (pathname === '/profile') return 'Profile';
+    if (pathname === '/login') return 'Sign In';
+    if (pathname === '/register') return 'Sign Up';
+    if (pathname === '/account-settings') return 'Account Settings';
+    if (pathname === '/notification-preferences') return 'Notifications';
     return 'SoulCanvas';
   };
 
@@ -27,9 +32,10 @@ export const Header = () => {
 
       <Text style={styles.title}>{getTitle()}</Text>
 
-      <TouchableOpacity style={styles.rightIcon} activeOpacity={0.7}>
-        <Ionicons name="person-circle-outline" size={28} color={Colors.primary} />
-      </TouchableOpacity>
+      {/* HANYA INI YANG DIHAPUS - icon profile */}
+      {/* Sebelumnya: <Ionicons name="person-circle-outline" size={28} color={Colors.primary} /> */}
+      {/* Sekarang: placeholder kosong agar title tetap center */}
+      <View style={styles.rightPlaceholder} />
     </View>
   );
 };
@@ -66,7 +72,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.48,
     color: Colors.primary,
   },
-  rightIcon: {
-    padding: 8,
+  rightPlaceholder: {
+    width: 40,
   },
 });
