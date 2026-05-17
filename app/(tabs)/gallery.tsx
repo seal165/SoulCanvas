@@ -1,21 +1,157 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Platform,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+  Modal,
+  Share
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as MediaLibrary from 'expo-media-library';
 import { Header, BottomNav } from '@/components/common';
 import { Colors } from '@/constants/Colors';
-import { useRouter } from 'expo-router';
+import { api } from '../../services/api';
 
-const { width } = Dimensions.get('window');
-
-const GALLERY_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9IL5ei8UZF9Vs-Kq_m0vJ9LpyjYyutbytUnaRhbNWhMXvu-CNrtpA52DLP32ftx9W57nwIqRGH8bg7joKtSgBhO3HHiRUziQV2xGe5TdNVXMyDgIks412H7h_XIq-IaN1DTOPw4jq9XXiFCWqHZX3Fj1CWf_GXix6ajC_tVhtr49M3JnJ8HpoINPEUePWPkGdZdxeQPrUQU4hVNGZ6jZJnF7gwMp7MF2V79fEtPBOMeTELWTyUb-KZLJZJcp9LmXEB8MRtNE59s9i';
+interface Artwork {
+  id: string;
+  feeling: string;
+  imageUrl: string;
+  caption: string;
+  voiceNoteUri: string | null;
+  generatedDate: string;
+}
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
+
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
+
+  const fetchArtworks = useCallback(async () => {
+    try {
+      const response = await api.get('/artworks');
+      const sorted = response.data.sort((a: Artwork, b: Artwork) => 
+        new Date(b.generatedDate).getTime() - new Date(a.generatedDate).getTime()
+      );
+      setArtworks(sorted);
+    } catch (err) {
+      console.error('Error fetching artworks:', err);
+      Alert.alert('Error', 'Failed to load gallery');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchArtworks();
+  }, [fetchArtworks]);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to save images to your gallery');
+      }
+    })();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchArtworks();
+  };
+
+  const handleDeleteArtwork = (id: string) => {
+    Alert.alert(
+      'Delete Artwork',
+      'Are you sure you want to remove this from your gallery?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/artworks/${id}`);
+              fetchArtworks();
+              Alert.alert('Deleted', 'Artwork removed from gallery');
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to delete');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Save image to gallery menggunakan fetch + MediaLibrary (tanpa FileSystem)
+  const handleSaveImage = async (imageUrl: string) => {
+    setSavingImage(true);
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+        if (typeof base64 === 'string') {
+          await MediaLibrary.createAssetAsync(base64);
+          Alert.alert('Success', 'Image saved to your gallery!');
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error('Error saving image:', error);
+      Alert.alert('Error', 'Failed to save image. Please try again.');
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
+  const handleShare = async (imageUrl: string, feeling: string) => {
+    try {
+      await Share.share({
+        message: `My emotional artwork: "${feeling}"\nCreated with SoulCanvas`,
+        url: imageUrl,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const openDetailModal = (artwork: Artwork) => {
+    setSelectedArtwork(artwork);
+    setModalVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -26,83 +162,181 @@ export default function GalleryScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + 32,
+            paddingTop: headerHeight + 20,
             paddingBottom: bottomNavHeight + 24,
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+        }
       >
-        <View style={[styles.bgBlur1, { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, right: -width * 0.2, top: width * 0.25 }]} />
-        <View style={[styles.bgBlur2, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, left: -width * 0.2, bottom: width * 0.25 }]} />
-
-        <View style={styles.resultHeader}>
-          <View style={styles.resultHeaderLeft}>
-            <Text style={styles.resultBadge}>Manifestation Complete</Text>
-            <Text style={styles.resultTitle}>The Echo of {'\n'}Your Inner Silence</Text>
-          </View>
-          <View style={styles.resultHeaderRight}>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-              <MaterialIcons name="share" size={20} color={Colors.secondary} />
-              <Text style={styles.iconButtonText}>Share</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-              <MaterialIcons name="refresh" size={20} color={Colors.onSurfaceVariant} />
-              <Text style={[styles.iconButtonText, { color: Colors.onSurfaceVariant }]}>Regenerate</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.headerSection}>
+          <Text style={styles.badge}>Your Emotional Gallery</Text>
+          <Text style={styles.title}>Visual Journal{'\n'}of Your Soul</Text>
+          <Text style={styles.subtitle}>
+            Tap on any artwork to view details, save, or share
+          </Text>
         </View>
 
-        <View style={styles.artworkSection}>
-          <View style={styles.artworkWrapper}>
-            <View style={styles.artworkInner}>
-              <Image source={{ uri: GALLERY_IMAGE }} style={styles.artworkImage} resizeMode="cover" />
-              <View style={styles.artworkOverlay} />
-            </View>
-            <View style={styles.artworkCaption}>
-              <Text style={styles.artworkEdition}>SoulCanvas Edition 001</Text>
-              <Text style={styles.artworkQuote}>&quot;A journey through the subconscious&quot;</Text>
-            </View>
-          </View>
-        </View>
+        <TouchableOpacity 
+          style={styles.createButton}
+          onPress={() => router.push('/(tabs)/compose')}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="add" size={20} color={Colors.onPrimary} />
+          <Text style={styles.createButtonText}>Create New Artwork</Text>
+        </TouchableOpacity>
 
-        <View style={styles.actionGrid}>
-          <TouchableOpacity style={styles.saveButton} activeOpacity={0.8}>
-            <Text style={styles.saveButtonText}>Save Artwork</Text>
-          </TouchableOpacity>
-          <View style={styles.actionIcons}>
-            <TouchableOpacity style={styles.actionIconGroup} activeOpacity={0.7}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name="download" size={20} color={Colors.onSurfaceVariant} />
-              </View>
-              <Text style={styles.actionIconText}>Hi-Res Export</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIconGroup} activeOpacity={0.7}>
-              <View style={styles.iconCircle}>
-                <MaterialIcons name="brush" size={20} color={Colors.secondary} />
-              </View>
-              <Text style={styles.actionIconText}>Apply Style</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
+        ) : artworks.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="collections" size={64} color={Colors.onSurfaceVariant + '40'} />
+            <Text style={styles.emptyTitle}>No artworks yet</Text>
+            <Text style={styles.emptyText}>
+              Go to Compose and write your feeling to create your first emotional artwork
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={() => router.push('/(tabs)/compose')}
+            >
+              <Text style={styles.emptyButtonText}>Start Creating</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.backHomeButton} activeOpacity={0.7} onPress={() => router.push('/(tabs)')}>
-            <Text style={styles.backHomeText}>Back to Home</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.detailsGrid}>
-          <View style={styles.detailCard}>
-            <Text style={styles.detailTitle}>Tonal Balance</Text>
-            <Text style={styles.detailText}>The palette leverages organic earth foundations (#FDF9F1) contrasted by intellectual navy tones (#535F6F).</Text>
+        ) : (
+          <View style={styles.galleryList}>
+            {artworks.map((item) => (
+              <TouchableOpacity 
+                key={item.id} 
+                style={styles.artworkCard}
+                onPress={() => openDetailModal(item)}
+                activeOpacity={0.9}
+              >
+                <Image source={{ uri: item.imageUrl }} style={styles.artworkImage} />
+                <View style={styles.artworkOverlay}>
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteArtwork(item.id);
+                    }}
+                  >
+                    <MaterialIcons name="delete-outline" size={20} color={Colors.error} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.artworkInfo}>
+                  <View style={styles.feelingTag}>
+                    <MaterialIcons name="format-quote" size={14} color={Colors.secondary} />
+                    <Text style={styles.feelingText} numberOfLines={2}>
+                      {`"${item.feeling}"`}
+                    </Text>
+                  </View>
+                  
+                  {item.caption && (
+                    <View style={styles.captionContainer}>
+                      <MaterialIcons name="lightbulb" size={14} color={Colors.secondaryFixedDim} />
+                      <Text style={styles.captionText} numberOfLines={2}>
+                        {item.caption}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  <View style={styles.dateRow}>
+                    <MaterialIcons name="schedule" size={12} color={Colors.onSurfaceVariant + '80'} />
+                    <Text style={styles.dateText}>{formatDate(item.generatedDate)}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.detailCard}>
-            <Text style={styles.detailTitle}>Geometric Soul</Text>
-            <Text style={styles.detailText}>Asymmetric distribution of visual weight creates a breathing composition that evolves with every glance.</Text>
-          </View>
-          <View style={styles.detailCard}>
-            <Text style={styles.detailTitle}>Materiality</Text>
-            <Text style={styles.detailText}>Rendered using 2048-bit neural pathways to ensure every gold accent reflects the warmth of your intent.</Text>
-          </View>
-        </View>
+        )}
       </ScrollView>
+
+      {/* Detail Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedArtwork && (
+                <>
+                  <Image source={{ uri: selectedArtwork.imageUrl }} style={styles.modalImage} />
+                  
+                  <TouchableOpacity 
+                    style={styles.modalCloseButton}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <MaterialIcons name="close" size={24} color={Colors.onSurface} />
+                  </TouchableOpacity>
+                  
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalLabel}>What you felt</Text>
+                    <Text style={styles.modalFeelingText}>
+                      {`"${selectedArtwork.feeling}"`}
+                    </Text>
+                  </View>
+                  
+                  {selectedArtwork.caption && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalLabel}>Interpretation</Text>
+                      <Text style={styles.modalCaptionText}>
+                        {selectedArtwork.caption}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {selectedArtwork.voiceNoteUri && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalLabel}>Voice Note</Text>
+                      <TouchableOpacity style={styles.voiceNoteButton}>
+                        <MaterialIcons name="play-circle" size={24} color={Colors.secondary} />
+                        <Text style={styles.voiceNoteText}>Play Voice Note</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalLabel}>Created on</Text>
+                    <Text style={styles.modalDateText}>
+                      {formatDate(selectedArtwork.generatedDate)}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity 
+                      style={[styles.modalActionButton, styles.saveButton]}
+                      onPress={() => handleSaveImage(selectedArtwork.imageUrl)}
+                      disabled={savingImage}
+                    >
+                      {savingImage ? (
+                        <ActivityIndicator size="small" color={Colors.onPrimary} />
+                      ) : (
+                        <>
+                          <MaterialIcons name="download" size={20} color={Colors.onPrimary} />
+                          <Text style={styles.modalActionText}>Save to Gallery</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={[styles.modalActionButton, styles.shareButton]}
+                      onPress={() => handleShare(selectedArtwork.imageUrl, selectedArtwork.feeling)}
+                    >
+                      <MaterialIcons name="share" size={20} color={Colors.onPrimary} />
+                      <Text style={styles.modalActionText}>Share</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <BottomNav activeTab="gallery" />
     </SafeAreaView>
@@ -112,34 +346,72 @@ export default function GalleryScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.surface },
   scrollContent: { alignItems: 'center', paddingHorizontal: 24 },
-  bgBlur1: { position: 'absolute', backgroundColor: Colors.tertiaryContainer + '33' },
-  bgBlur2: { position: 'absolute', backgroundColor: Colors.primaryContainer + '1A' },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 48, marginTop: 20, flexWrap: 'wrap', gap: 24 },
-  resultHeaderLeft: { flex: 1, gap: 16 },
-  resultBadge: { fontSize: 11, fontWeight: '500', letterSpacing: 1.2, textTransform: 'uppercase', color: Colors.secondary },
-  resultTitle: { fontSize: 40, fontWeight: '300', letterSpacing: -0.8, color: Colors.onSurface, lineHeight: 48 },
-  resultHeaderRight: { flexDirection: 'row', gap: 24 },
-  iconButton: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconButtonText: { fontSize: 10, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.secondary },
-  artworkSection: { width: '100%', marginBottom: 48 },
-  artworkWrapper: { position: 'relative', width: '100%', maxWidth: 896, aspectRatio: 16 / 10, backgroundColor: Colors.surfaceContainerLowest, borderRadius: 12, padding: 32, shadowColor: '#1c1c17', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 24, elevation: 2 },
-  artworkInner: { width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.surfaceContainer },
-  artworkImage: { width: '100%', height: '100%', opacity: 0.8 },
-  artworkOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(83, 95, 111, 0.1)' },
-  artworkCaption: { position: 'absolute', bottom: 48, right: 48, backgroundColor: Colors.surfaceContainerLowest + 'CC', paddingHorizontal: 24, paddingVertical: 16, borderRadius: 8, borderWidth: 1, borderColor: Colors.outlineVariant + '1A' },
-  artworkEdition: { fontSize: 10, fontWeight: '500', letterSpacing: 2, textTransform: 'uppercase', color: Colors.secondary, marginBottom: 4 },
-  artworkQuote: { fontSize: 14, fontWeight: '300', fontStyle: 'italic', color: Colors.onSurface },
-  actionGrid: { width: '100%', maxWidth: 896, alignItems: 'center', gap: 32, marginBottom: 64 },
-  saveButton: { width: '100%', maxWidth: 280, paddingVertical: 20, backgroundColor: Colors.primary, borderRadius: 999, alignItems: 'center' },
-  saveButtonText: { fontSize: 12, fontWeight: '500', letterSpacing: 1.2, textTransform: 'uppercase', color: Colors.onPrimary },
-  actionIcons: { flexDirection: 'row', gap: 32, alignItems: 'center' },
-  actionIconGroup: { alignItems: 'center', gap: 12 },
-  iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
-  actionIconText: { fontSize: 10, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.onSurfaceVariant },
-  backHomeButton: { paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: Colors.secondary + '33' },
-  backHomeText: { fontSize: 10, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.secondary },
-  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 48, marginBottom: 40, justifyContent: 'center' },
-  detailCard: { flex: 1, minWidth: 200, gap: 16 },
-  detailTitle: { fontSize: 13, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.onSurfaceVariant },
-  detailText: { fontSize: 13, fontWeight: '300', lineHeight: 20, color: Colors.onSurfaceVariant + 'B3' },
+  headerSection: { alignItems: 'center', marginBottom: 24, width: '100%' },
+  badge: { fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: Colors.secondary, marginBottom: 12 },
+  title: { fontSize: 36, fontWeight: '300', textAlign: 'center', color: Colors.onSurface, lineHeight: 44, marginBottom: 12 },
+  subtitle: { fontSize: 14, textAlign: 'center', color: Colors.onSurfaceVariant, lineHeight: 20, maxWidth: 280 },
+  createButton: {
+    flexDirection: 'row',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 40,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 32,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  createButtonText: { fontSize: 14, fontWeight: '500', color: Colors.onPrimary },
+  loader: { marginTop: 40 },
+  emptyContainer: { alignItems: 'center', marginTop: 40, gap: 16, paddingHorizontal: 20 },
+  emptyTitle: { fontSize: 20, fontWeight: '500', color: Colors.onSurfaceVariant },
+  emptyText: { fontSize: 14, color: Colors.onSurfaceVariant + '80', textAlign: 'center', lineHeight: 20 },
+  emptyButton: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.secondaryContainer + '66', borderRadius: 30, marginTop: 8 },
+  emptyButtonText: { fontSize: 14, fontWeight: '500', color: Colors.onSecondaryContainer },
+  galleryList: { width: '100%', gap: 20, paddingBottom: 20 },
+  artworkCard: {
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: Colors.onSurface,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  artworkImage: { width: '100%', height: 220 },
+  artworkOverlay: { position: 'absolute', top: 12, right: 12 },
+  deleteButton: {
+    backgroundColor: Colors.surface + 'CC',
+    padding: 8,
+    borderRadius: 20,
+  },
+  artworkInfo: { padding: 16, gap: 10 },
+  feelingTag: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  feelingText: { flex: 1, fontSize: 15, fontWeight: '400', color: Colors.onSurface, fontStyle: 'italic', lineHeight: 22 },
+  captionContainer: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: Colors.primaryContainer + '15', padding: 10, borderRadius: 12 },
+  captionText: { flex: 1, fontSize: 12, color: Colors.onSurfaceVariant, lineHeight: 16 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  dateText: { fontSize: 11, color: Colors.onSurfaceVariant + '80' },
+  
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '90%', maxHeight: '85%', backgroundColor: Colors.surface, borderRadius: 24, overflow: 'hidden' },
+  modalImage: { width: '100%', height: 300 },
+  modalCloseButton: { position: 'absolute', top: 16, right: 16, backgroundColor: Colors.surface + 'CC', padding: 8, borderRadius: 20 },
+  modalSection: { paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant + '30' },
+  modalLabel: { fontSize: 10, fontWeight: '500', letterSpacing: 1.5, textTransform: 'uppercase', color: Colors.onSurfaceVariant, marginBottom: 8 },
+  modalFeelingText: { fontSize: 18, fontWeight: '300', fontStyle: 'italic', color: Colors.onSurface, lineHeight: 26 },
+  modalCaptionText: { fontSize: 14, color: Colors.onSurfaceVariant, lineHeight: 20 },
+  modalDateText: { fontSize: 14, color: Colors.onSurface },
+  voiceNoteButton: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  voiceNoteText: { fontSize: 14, color: Colors.secondary },
+  modalActions: { flexDirection: 'row', gap: 12, padding: 20 },
+  modalActionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 30 },
+  saveButton: { backgroundColor: Colors.primary },
+  shareButton: { backgroundColor: Colors.secondary },
+  modalActionText: { fontSize: 14, fontWeight: '500', color: Colors.onPrimary },
 });

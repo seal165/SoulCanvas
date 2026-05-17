@@ -1,24 +1,194 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+  Platform,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  Pressable
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Header, BottomNav } from '@/components/common';
 import { Colors } from '@/constants/Colors';
+import { api } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 const CAPSULE_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAc9mOfUuvqXT85BmzWYwEr5F-McJts-vQx_pP89HjI4Ibb9b77HxwhI47-CBp9KGj9ncMTRvC51_SSm_GENG52ja5EGexeFOnfZ9B_lrcpxP9QSkmmITMymEdNgB3CGLR2BbY0ZMsb0gTZpnnx2X3yaqYDWpZAliyqyaIKAThE80OTqByBWlu4fK_JhfhgXXicmI2k2C9yELrlbUxVljD8lDoaoYxMLYEaH9YUvI7KazXplXAZ-j9HIQnGrLRkc7hcrvDbOfMtpxOe';
 
+interface Capsule {
+  id: string;
+  message: string;
+  sealDate: string;
+  createdAt: string;
+}
+
 export default function CapsuleScreen() {
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [capsules, setCapsules] = useState<Capsule[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selectedCapsule, setSelectedCapsule] = useState<Capsule | null>(null);
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [capsuleContent, setCapsuleContent] = useState('');
 
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
-
   const quickSelectDates = ['6 Months', '1 Year', '5 Years'];
+
+  // GET: Ambil semua capsules
+  const fetchCapsules = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/capsules');
+      setCapsules(response.data);
+    } catch (err) {
+      console.error('Error fetching capsules:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCapsules();
+  }, [fetchCapsules]);
+
+  // Validasi format tanggal YYYY-MM-DD
+  const isValidDate = (dateStr: string) => {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateStr)) return false;
+    const date = new Date(dateStr);
+    return date instanceof Date && !isNaN(date.getTime());
+  };
+
+  // Quick select tanggal
+  const quickSelectDate = (label: string) => {
+    const today = new Date();
+    let targetDate = new Date();
+    if (label === '6 Months') {
+      targetDate.setMonth(today.getMonth() + 6);
+    } else if (label === '1 Year') {
+      targetDate.setFullYear(today.getFullYear() + 1);
+    } else if (label === '5 Years') {
+      targetDate.setFullYear(today.getFullYear() + 5);
+    }
+    setSelectedDate(targetDate.toISOString().split('T')[0]);
+  };
+
+  // Cek apakah capsule bisa dibuka
+  const canOpenCapsule = (sealDate: string) => {
+    const today = new Date();
+    const seal = new Date(sealDate);
+    return today >= seal;
+  };
+
+  // Buka capsule
+  const handleOpenCapsule = (capsule: Capsule) => {
+    const canOpen = canOpenCapsule(capsule.sealDate);
+    
+    if (canOpen) {
+      setCapsuleContent(capsule.message);
+      setSelectedCapsule(capsule);
+      setShowContentModal(true);
+    } else {
+      const sealDateObj = new Date(capsule.sealDate);
+      Alert.alert(
+        'Capsule Locked',
+        `This capsule is sealed until ${sealDateObj.toLocaleDateString()}. Return on this date to read your message.`,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // POST: Simpan capsule baru
+  const handleSaveCapsule = async () => {
+    if (!message.trim()) {
+      Alert.alert('Incomplete', 'Please write your message');
+      return;
+    }
+    if (!selectedDate.trim()) {
+      Alert.alert('Incomplete', 'Please select a seal date');
+      return;
+    }
+    if (!isValidDate(selectedDate)) {
+      Alert.alert('Invalid Date', 'Please use format: YYYY-MM-DD (example: 2025-12-31)');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/capsules', {
+        message: message.trim(),
+        sealDate: selectedDate,
+        createdAt: new Date().toISOString(),
+      });
+      Alert.alert('Success', 'Your time capsule is sealed!', [
+        { text: 'OK', onPress: () => {
+          setMessage('');
+          setSelectedDate('');
+          fetchCapsules();
+        }}
+      ]);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to save capsule');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // DELETE: Hapus capsule
+  const handleDeleteCapsule = (id: string) => {
+    Alert.alert(
+      'Delete Capsule',
+      'Are you sure? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/capsules/${id}`);
+              fetchCapsules();
+              Alert.alert('Deleted', 'Capsule removed');
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to delete');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Format tanggal tampilan dari string
+  const formatDisplayDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  // Dapatkan status capsule
+  const getCapsuleStatus = (sealDate: string) => {
+    const canOpen = canOpenCapsule(sealDate);
+    return {
+      icon: canOpen ? 'lock-open' : 'lock',
+      text: canOpen ? 'Ready to open' : 'Locked',
+      color: canOpen ? Colors.secondary : Colors.onSurfaceVariant
+    };
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -50,10 +220,10 @@ export default function CapsuleScreen() {
 
         <View style={styles.editorGrid}>
           <View style={[styles.textAreaContainer]}>
-            <Text style={styles.inputLabel}>Your Message</Text>
+            <Text style={styles.inputLabel}>Your Message (Hidden until seal date)</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Speak to the person you are becoming..."
+              placeholder="Write something only your future self can read..."
               placeholderTextColor={Colors.outline + '66'}
               multiline
               value={message}
@@ -61,34 +231,37 @@ export default function CapsuleScreen() {
               textAlignVertical="top"
             />
             <View style={styles.inputFooter}>
-              <MaterialIcons name="edit-note" size={20} color={Colors.onSurfaceVariant + '66'} />
-              <Text style={styles.inputFooterText}>Thought Flowing...</Text>
+              <MaterialIcons name="lock" size={16} color={Colors.secondaryFixedDim} />
+              <Text style={styles.inputFooterText}>This message will be encrypted</Text>
             </View>
           </View>
 
           <View style={styles.sidebar}>
             <View style={[styles.dateCard]}>
-              <Text style={styles.dateLabel}>Seal Until</Text>
+              <Text style={styles.dateLabel}>Seal Until (YYYY-MM-DD)</Text>
+              
               <View style={styles.dateInputWrapper}>
                 <TextInput
                   style={styles.dateInput}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="2022-02-28"
                   placeholderTextColor={Colors.outline + '66'}
                   value={selectedDate}
                   onChangeText={setSelectedDate}
                 />
                 <MaterialIcons name="calendar-today" size={24} color={Colors.secondaryFixedDim} />
               </View>
+
               <View style={styles.quickSelect}>
                 <Text style={styles.quickSelectLabel}>Quick Select</Text>
                 <View style={styles.quickSelectButtons}>
                   {quickSelectDates.map((label, index) => (
                     <TouchableOpacity
                       key={index}
-                      style={[styles.quickSelectButton, label === '5 Years' && styles.quickSelectButtonActive]}
+                      style={styles.quickSelectButton}
                       activeOpacity={0.7}
+                      onPress={() => quickSelectDate(label)}
                     >
-                      <Text style={[styles.quickSelectButtonText, label === '5 Years' && styles.quickSelectButtonTextActive]}>
+                      <Text style={styles.quickSelectButtonText}>
                         {label}
                       </Text>
                     </TouchableOpacity>
@@ -108,41 +281,99 @@ export default function CapsuleScreen() {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.saveButton} activeOpacity={0.8}>
-            <Text style={styles.saveButtonText}>Save Capsule</Text>
-            <MaterialIcons name="arrow-forward" size={18} color={Colors.onPrimary} />
+          <TouchableOpacity
+            style={styles.saveButton}
+            activeOpacity={0.8}
+            onPress={handleSaveCapsule}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={Colors.onPrimary} />
+            ) : (
+              <>
+                <Text style={styles.saveButtonText}>Seal Capsule</Text>
+                <MaterialIcons name="lock" size={18} color={Colors.onPrimary} />
+              </>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.viewButton} activeOpacity={0.7}>
-            <MaterialIcons name="visibility" size={18} color={Colors.secondary} />
-            <Text style={styles.viewButtonText}>View Capsules</Text>
+          <TouchableOpacity style={styles.viewButton} activeOpacity={0.7} onPress={fetchCapsules}>
+            <MaterialIcons name="refresh" size={18} color={Colors.secondary} />
+            <Text style={styles.viewButtonText}>Refresh</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.recentSection}>
-          <Text style={styles.recentTitle}>Recently Sealed</Text>
-          <View style={styles.recentGrid}>
-            <TouchableOpacity style={styles.recentCard} activeOpacity={0.7}>
-              <View style={styles.recentCardHeader}>
-                <MaterialIcons name="lock" size={20} color={Colors.secondaryFixedDim} />
-                <Text style={styles.recentCardDate}>Arriving Oct 2025</Text>
-              </View>
-              <Text style={styles.recentCardText}>Dreams of the coast...</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.recentCard} activeOpacity={0.7}>
-              <View style={styles.recentCardHeader}>
-                <MaterialIcons name="lock" size={20} color={Colors.secondaryFixedDim} />
-                <Text style={styles.recentCardDate}>Arriving Jan 2030</Text>
-              </View>
-              <Text style={styles.recentCardText}>To the older, wiser me.</Text>
-            </TouchableOpacity>
+          <Text style={styles.recentTitle}>My Time Capsules</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.primary} />
+          ) : capsules.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyCardText}>Empty Slot</Text>
+              <MaterialIcons name="inbox" size={32} color={Colors.onSurfaceVariant + '66'} />
+              <Text style={styles.emptyCardText}>No capsules yet. Create one above.</Text>
             </View>
-          </View>
+          ) : (
+            <View style={styles.recentGrid}>
+              {capsules.map((item) => {
+                const status = getCapsuleStatus(item.sealDate);
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.recentCard}
+                    activeOpacity={0.7}
+                    onPress={() => handleOpenCapsule(item)}
+                  >
+                    <View style={styles.recentCardHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <MaterialIcons name={status.icon as any} size={20} color={status.color} />
+                        <Text style={[styles.recentCardDate, { color: status.color }]}>
+                          {status.text} - Opens {formatDisplayDate(item.sealDate)}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => handleDeleteCapsule(item.id)}>
+                        <MaterialIcons name="delete-outline" size={20} color={Colors.error} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.recentCardText} numberOfLines={1}>
+                      {status.text === 'Locked' ? '🔒 Message hidden until seal date' : `📖 ${item.message.substring(0, 60)}...`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
       </ScrollView>
 
       <BottomNav activeTab="capsule" />
+
+      {/* Modal untuk menampilkan isi capsule */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showContentModal}
+        onRequestClose={() => setShowContentModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowContentModal(false)}>
+          <View style={styles.contentModal}>
+            <View style={styles.contentModalHeader}>
+              <MaterialIcons name="lock-open" size={24} color={Colors.secondary} />
+              <Text style={styles.contentModalTitle}>Your Time Capsule</Text>
+              <TouchableOpacity onPress={() => setShowContentModal(false)}>
+                <MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.contentModalBody}>
+              <Text style={styles.contentModalDate}>
+                Sealed on: {selectedCapsule && formatDisplayDate(selectedCapsule.createdAt)}
+              </Text>
+              <Text style={styles.contentModalMessage}>{capsuleContent}</Text>
+              <Text style={styles.contentModalFooter}>
+                From your past self to your present self 💫
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -170,11 +401,16 @@ const styles = StyleSheet.create({
   dateInput: { flex: 1, paddingVertical: 12, fontSize: 16, color: Colors.onSurface },
   quickSelect: { gap: 12 },
   quickSelectLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.onSurfaceVariant },
-  quickSelectButtons: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  quickSelectButton: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 },
-  quickSelectButtonActive: { backgroundColor: Colors.secondaryContainer + '66' },
-  quickSelectButtonText: { fontSize: 12, fontWeight: '500', color: Colors.onSurfaceVariant },
-  quickSelectButtonTextActive: { color: Colors.onSecondaryContainer },
+  quickSelectButtons: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  quickSelectButton: { 
+    paddingHorizontal: 20, 
+    paddingVertical: 10, 
+    backgroundColor: Colors.surfaceContainerHigh, 
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.outlineVariant + '30',
+  },
+  quickSelectButtonText: { fontSize: 13, fontWeight: '500', color: Colors.onSurfaceVariant },
   imageCard: { aspectRatio: 1, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   capsuleImage: { width: '100%', height: '100%', opacity: 0.9 },
   imageOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: Colors.primary + '66' },
@@ -190,8 +426,16 @@ const styles = StyleSheet.create({
   recentGrid: { gap: 24 },
   recentCard: { padding: 20, backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, gap: 16 },
   recentCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  recentCardDate: { fontSize: 10, fontWeight: '500', letterSpacing: 1, textTransform: 'uppercase', color: Colors.onSurfaceVariant + '99' },
-  recentCardText: { fontSize: 14, fontWeight: '500', color: Colors.onSurface },
-  emptyCard: { padding: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: Colors.outlineVariant + '66', borderRadius: 12, alignItems: 'center' },
-  emptyCardText: { fontSize: 10, fontWeight: '500', letterSpacing: 1, textTransform: 'uppercase', color: Colors.onSurfaceVariant + '66' },
+  recentCardDate: { fontSize: 10, fontWeight: '500', letterSpacing: 1, textTransform: 'uppercase' },
+  recentCardText: { fontSize: 14, fontWeight: '400', color: Colors.onSurface, fontStyle: 'italic' },
+  emptyCard: { padding: 40, borderWidth: 1, borderStyle: 'dashed', borderColor: Colors.outlineVariant + '66', borderRadius: 12, alignItems: 'center', gap: 12 },
+  emptyCardText: { fontSize: 12, fontWeight: '500', letterSpacing: 1, textTransform: 'uppercase', color: Colors.onSurfaceVariant + '66', textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  contentModal: { width: '85%', backgroundColor: Colors.surface, borderRadius: 24, overflow: 'hidden' },
+  contentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant + '40' },
+  contentModalTitle: { fontSize: 18, fontWeight: '500', color: Colors.onSurface, flex: 1, textAlign: 'center' },
+  contentModalBody: { padding: 24, gap: 16 },
+  contentModalDate: { fontSize: 12, color: Colors.onSurfaceVariant, textAlign: 'center' },
+  contentModalMessage: { fontSize: 16, lineHeight: 24, color: Colors.onSurface, textAlign: 'center', fontStyle: 'italic' },
+  contentModalFooter: { fontSize: 11, color: Colors.secondary, textAlign: 'center', marginTop: 16, letterSpacing: 1, textTransform: 'uppercase' },
 });
