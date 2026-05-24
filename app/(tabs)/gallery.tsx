@@ -25,10 +25,10 @@ import { api } from '../../services/api';
 interface Artwork {
   id: string;
   feeling: string;
-  imageUrl: string;
+  image_url: string;
   caption: string;
-  voiceNoteUri: string | null;
-  generatedDate: string;
+  voice_note_uri: string | null;
+  created_at: string;
 }
 
 export default function GalleryScreen() {
@@ -46,11 +46,13 @@ export default function GalleryScreen() {
 
   const fetchArtworks = useCallback(async () => {
     try {
-      const response = await api.get('/artworks');
-      const sorted = response.data.sort((a: Artwork, b: Artwork) => 
-        new Date(b.generatedDate).getTime() - new Date(a.generatedDate).getTime()
-      );
-      setArtworks(sorted);
+      const { data, error } = await api
+        .from('artworks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setArtworks(data || []);
     } catch (err) {
       console.error('Error fetching artworks:', err);
       Alert.alert('Error', 'Failed to load gallery');
@@ -89,7 +91,8 @@ export default function GalleryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete(`/artworks/${id}`);
+              const { error } = await api.from('artworks').delete().eq('id', id);
+              if (error) throw error;
               fetchArtworks();
               Alert.alert('Deleted', 'Artwork removed from gallery');
             } catch (err) {
@@ -102,7 +105,6 @@ export default function GalleryScreen() {
     );
   };
 
-  // Save image to gallery menggunakan fetch + MediaLibrary (tanpa FileSystem)
   const handleSaveImage = async (imageUrl: string) => {
     setSavingImage(true);
     try {
@@ -118,8 +120,8 @@ export default function GalleryScreen() {
         }
       };
       reader.readAsDataURL(blob);
-    } catch (error) {
-      console.error('Error saving image:', error);
+    } catch (err) {
+      console.error('Error saving image:', err);
       Alert.alert('Error', 'Failed to save image. Please try again.');
     } finally {
       setSavingImage(false);
@@ -132,8 +134,8 @@ export default function GalleryScreen() {
         message: `My emotional artwork: "${feeling}"\nCreated with SoulCanvas`,
         url: imageUrl,
       });
-    } catch (error) {
-      console.error('Error sharing:', error);
+    } catch (err) {
+      console.error('Error sharing:', err);
     }
   };
 
@@ -213,7 +215,7 @@ export default function GalleryScreen() {
                 onPress={() => openDetailModal(item)}
                 activeOpacity={0.9}
               >
-                <Image source={{ uri: item.imageUrl }} style={styles.artworkImage} />
+                <Image source={{ uri: item.image_url }} style={styles.artworkImage} />
                 <View style={styles.artworkOverlay}>
                   <TouchableOpacity 
                     style={styles.deleteButton}
@@ -244,7 +246,7 @@ export default function GalleryScreen() {
                   
                   <View style={styles.dateRow}>
                     <MaterialIcons name="schedule" size={12} color={Colors.onSurfaceVariant + '80'} />
-                    <Text style={styles.dateText}>{formatDate(item.generatedDate)}</Text>
+                    <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -265,7 +267,7 @@ export default function GalleryScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedArtwork && (
                 <>
-                  <Image source={{ uri: selectedArtwork.imageUrl }} style={styles.modalImage} />
+                  <Image source={{ uri: selectedArtwork.image_url }} style={styles.modalImage} />
                   
                   <TouchableOpacity 
                     style={styles.modalCloseButton}
@@ -290,7 +292,7 @@ export default function GalleryScreen() {
                     </View>
                   )}
                   
-                  {selectedArtwork.voiceNoteUri && (
+                  {selectedArtwork.voice_note_uri && (
                     <View style={styles.modalSection}>
                       <Text style={styles.modalLabel}>Voice Note</Text>
                       <TouchableOpacity style={styles.voiceNoteButton}>
@@ -303,14 +305,14 @@ export default function GalleryScreen() {
                   <View style={styles.modalSection}>
                     <Text style={styles.modalLabel}>Created on</Text>
                     <Text style={styles.modalDateText}>
-                      {formatDate(selectedArtwork.generatedDate)}
+                      {formatDate(selectedArtwork.created_at)}
                     </Text>
                   </View>
                   
                   <View style={styles.modalActions}>
                     <TouchableOpacity 
                       style={[styles.modalActionButton, styles.saveButton]}
-                      onPress={() => handleSaveImage(selectedArtwork.imageUrl)}
+                      onPress={() => handleSaveImage(selectedArtwork.image_url)}
                       disabled={savingImage}
                     >
                       {savingImage ? (
@@ -325,7 +327,7 @@ export default function GalleryScreen() {
                     
                     <TouchableOpacity 
                       style={[styles.modalActionButton, styles.shareButton]}
-                      onPress={() => handleShare(selectedArtwork.imageUrl, selectedArtwork.feeling)}
+                      onPress={() => handleShare(selectedArtwork.image_url, selectedArtwork.feeling)}
                     >
                       <MaterialIcons name="share" size={20} color={Colors.onPrimary} />
                       <Text style={styles.modalActionText}>Share</Text>

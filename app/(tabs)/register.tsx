@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter, Href } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Href, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../../services/supabase';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -22,30 +22,44 @@ export default function RegisterScreen() {
     setIsDisabled(!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim());
   }, [fullName, email, password, confirmPassword]);
 
+  // Fungsi validasi password
+  const validatePassword = (pwd: string): string | null => {
+    if (pwd.length < 8 || pwd.length > 16) return 'Password must be 8–16 characters.';
+    if (!/[A-Z]/.test(pwd)) return 'Password must contain an uppercase letter.';
+    if (!/[a-z]/.test(pwd)) return 'Password must contain a lowercase letter.';
+    if (!/[0-9]/.test(pwd)) return 'Password must contain a number.';
+    return null;
+  };
+
   const handleRegister = async () => {
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Password dan konfirmasi password tidak cocok.');
-      return;
-    }
-    if (password.length < 8) {
-      Alert.alert('Error', 'Password harus minimal 8 karakter.');
-      return;
-    }
+    if (!fullName.trim()) return Alert.alert('Error', 'Full name required');
+    if (!email.trim()) return Alert.alert('Error', 'Email required');
+    const pwdErr = validatePassword(password);
+    if (pwdErr) return Alert.alert('Error', pwdErr);
+    if (password !== confirmPassword) return Alert.alert('Error', 'Passwords do not match');
 
     setLoading(true);
-    
-    // Simulasi proses register
-    setTimeout(async () => {
-      // Simpan status login setelah register berhasil
-      await AsyncStorage.setItem('isLoggedIn', 'true');
-      await AsyncStorage.setItem('userEmail', email);
-      await AsyncStorage.setItem('userName', fullName);
-      
+    try {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { data: { full_name: fullName.trim(), avatar_url: null } }
+      });
+      if (signUpError) throw signUpError;
+
+      // Auto login
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) throw signInError;
+
+      Alert.alert('Success', 'Account created!', [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]);
+    } catch (error: any) {
+      Alert.alert('Registration Failed', error.message);
+    } finally {
       setLoading(false);
-      Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)' as Href) }
-      ]);
-    }, 1500);
+    }
   };
 
   return (

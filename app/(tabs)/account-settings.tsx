@@ -1,34 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Platform, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router'; // <-- tambah
 import { MaterialIcons } from '@expo/vector-icons';
 import { Header, BottomNav } from '@/components/common';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/supabase';
 
+// Definisikan PROFILE_IMAGE (sama seperti di file lain)
 const PROFILE_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAPE9JLuQgeD-AYQxDJhk4N5CrudhlCBf3GB4SvB6ktMa9azXpssC2jN4AP3hb_m8wPqedwnj0Rp6pCILLW_0M8JYKZY5l3k1OOgZiF9QagAbKFWRNkc6sXY044EfsVBoTSFuGr5w5S0qJ8nTJ3duLo9svsQoP31TBX5f13fYUcsilzyTwkADvDfHA6EQmxZ7kgVfUw1f__rWKveHogHaoo7gyXVZHhN-2kWrJ6jkY77ppb_6Ahp-bR4U79-YaMSrPTMd8ytqImd2a_';
 
 export default function AccountSettingsScreen() {
+  const router = useRouter(); // <-- tambah
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
-
-  const [fullName, setFullName] = useState('Aura Sterling');
-  const [email, setEmail] = useState('aura.sterling@canvas.art');
+  const { session } = useAuth();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [password, setPassword] = useState('12345678');
+  const [password, setPassword] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(PROFILE_IMAGE);
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Account settings saved successfully!');
+  useEffect(() => {
+    if (session?.user) {
+      setFullName(session.user.user_metadata?.full_name || '');
+      setEmail(session.user.email || '');
+      setAvatarUrl(session.user.user_metadata?.avatar_url || PROFILE_IMAGE);
+    }
+  }, [session]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: fullName, avatar_url: avatarUrl }
+    });
+    setLoading(false);
+    if (error) Alert.alert('Error', error.message);
+    else Alert.alert('Success', 'Account settings saved!');
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'Are you sure? This action cannot be undone. All your data will be permanently deleted.',
+      'Are you sure? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => Alert.alert('Account Deleted', 'Your account has been deleted.') }
+        { text: 'Delete', style: 'destructive', onPress: async () => {
+            const { error } = await supabase.rpc('delete_user');
+            if (error) Alert.alert('Error', error.message);
+            else {
+              await supabase.auth.signOut();
+              router.replace('/(tabs)/login');
+            }
+          }
+        }
       ]
     );
   };
@@ -48,12 +77,12 @@ export default function AccountSettingsScreen() {
         {/* Profile Image */}
         <View style={styles.profileImageContainer}>
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: PROFILE_IMAGE }} style={styles.avatar} />
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             <TouchableOpacity style={styles.editPhotoButton}>
               <MaterialIcons name="edit" size={18} color={Colors.onPrimary} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>Aura Sterling</Text>
+          <Text style={styles.userName}>{fullName || 'Art Lover'}</Text>
           <Text style={styles.userTier}>Free Tier Artist</Text>
         </View>
 
@@ -83,6 +112,7 @@ export default function AccountSettingsScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor={`${Colors.outline}66`}
+                editable={false} // email tidak bisa diubah
               />
             </View>
           </View>
@@ -97,6 +127,7 @@ export default function AccountSettingsScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={!passwordVisible}
                 placeholderTextColor={`${Colors.outline}66`}
+                placeholder="New password (optional)"
               />
               <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)}>
                 <MaterialIcons name={passwordVisible ? 'visibility-off' : 'visibility'} size={20} color={`${Colors.primary}80`} />
@@ -105,7 +136,7 @@ export default function AccountSettingsScreen() {
           </View>
 
           {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading} activeOpacity={0.8}>
             <Text style={styles.saveButtonText}>Save Changes</Text>
           </TouchableOpacity>
         </View>

@@ -1,53 +1,32 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter, Href } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '../context/AuthContext';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { session, loading } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
-    // Animasi fade in dan scale
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
     ]).start();
 
-    // Timer 3 detik untuk cek login status
-    const timer = setTimeout(async () => {
-      try {
-        // Cek apakah user sudah login
-        const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
-        
-        if (isLoggedIn === 'true') {
-          // Sudah login, langsung ke home
-          router.replace('/(tabs)' as Href);
-        } else {
-          // Belum login, ke halaman login
-          router.replace('/(tabs)/login' as Href);
-        }
-      } catch (error) {
-        console.error('Error checking login status:', error);
-        router.replace('/(tabs)/login' as Href);
+    const timer = setTimeout(() => {
+      if (!loading) {
+        if (session) router.replace('/(tabs)');
+        else router.replace('/(tabs)/login');
       }
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, router]);
+  }, [fadeAnim, scaleAnim, loading, session, router]);
 
   return (
     <View style={styles.container}>

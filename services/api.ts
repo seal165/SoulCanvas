@@ -1,10 +1,3 @@
-import { create } from 'axios';
+import { supabase } from './supabase';
 
-const API_BASE_URL = 'https://6a096fb3e7e3f433d4831574.mockapi.io';
-
-export const api = create({
-  baseURL: API_BASE_URL,
-  headers: { 
-    'Content-Type': 'application/json',
-  },
-});
+export const api = supabase;

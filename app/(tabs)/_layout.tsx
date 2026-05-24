@@ -1,16 +1,8 @@
 import { Stack } from 'expo-router';
-import { Colors } from '@/constants/Colors';
 
-export default function TabLayout() {
+export default function TabsLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: {
-          backgroundColor: Colors.surface,
-        },
-      }}
-    >
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="compose" />
       <Stack.Screen name="gallery" />
@@ -20,6 +12,7 @@ export default function TabLayout() {
       <Stack.Screen name="register" />
       <Stack.Screen name="account-settings" />
       <Stack.Screen name="notification-preferences" />
+      <Stack.Screen name="privacy" />
     </Stack>
   );
 }

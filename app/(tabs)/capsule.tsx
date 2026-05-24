@@ -19,7 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Header, BottomNav } from '@/components/common';
 import { Colors } from '@/constants/Colors';
-import { api } from '../../services/api';
+import { supabase } from '../../services/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -28,8 +28,8 @@ const CAPSULE_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAc9mO
 interface Capsule {
   id: string;
   message: string;
-  sealDate: string;
-  createdAt: string;
+  seal_date: string;
+  created_at: string;
 }
 
 export default function CapsuleScreen() {
@@ -47,14 +47,19 @@ export default function CapsuleScreen() {
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
   const quickSelectDates = ['6 Months', '1 Year', '5 Years'];
 
-  // GET: Ambil semua capsules
   const fetchCapsules = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get('/capsules');
-      setCapsules(response.data);
+      const { data, error } = await supabase
+        .from('capsules')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCapsules(data || []);
     } catch (err) {
       console.error('Error fetching capsules:', err);
+      Alert.alert('Error', 'Failed to load capsules');
     } finally {
       setLoading(false);
     }
@@ -64,7 +69,6 @@ export default function CapsuleScreen() {
     fetchCapsules();
   }, [fetchCapsules]);
 
-  // Validasi format tanggal YYYY-MM-DD
   const isValidDate = (dateStr: string) => {
     const regex = /^\d{4}-\d{2}-\d{2}$/;
     if (!regex.test(dateStr)) return false;
@@ -72,46 +76,33 @@ export default function CapsuleScreen() {
     return date instanceof Date && !isNaN(date.getTime());
   };
 
-  // Quick select tanggal
   const quickSelectDate = (label: string) => {
     const today = new Date();
     let targetDate = new Date();
-    if (label === '6 Months') {
-      targetDate.setMonth(today.getMonth() + 6);
-    } else if (label === '1 Year') {
-      targetDate.setFullYear(today.getFullYear() + 1);
-    } else if (label === '5 Years') {
-      targetDate.setFullYear(today.getFullYear() + 5);
-    }
+    if (label === '6 Months') targetDate.setMonth(today.getMonth() + 6);
+    else if (label === '1 Year') targetDate.setFullYear(today.getFullYear() + 1);
+    else if (label === '5 Years') targetDate.setFullYear(today.getFullYear() + 5);
     setSelectedDate(targetDate.toISOString().split('T')[0]);
   };
 
-  // Cek apakah capsule bisa dibuka
   const canOpenCapsule = (sealDate: string) => {
     const today = new Date();
     const seal = new Date(sealDate);
     return today >= seal;
   };
 
-  // Buka capsule
   const handleOpenCapsule = (capsule: Capsule) => {
-    const canOpen = canOpenCapsule(capsule.sealDate);
-    
+    const canOpen = canOpenCapsule(capsule.seal_date);
     if (canOpen) {
       setCapsuleContent(capsule.message);
       setSelectedCapsule(capsule);
       setShowContentModal(true);
     } else {
-      const sealDateObj = new Date(capsule.sealDate);
-      Alert.alert(
-        'Capsule Locked',
-        `This capsule is sealed until ${sealDateObj.toLocaleDateString()}. Return on this date to read your message.`,
-        [{ text: 'OK' }]
-      );
+      const sealDateObj = new Date(capsule.seal_date);
+      Alert.alert('Capsule Locked', `This capsule is sealed until ${sealDateObj.toLocaleDateString()}. Return on this date to read your message.`, [{ text: 'OK' }]);
     }
   };
 
-  // POST: Simpan capsule baru
   const handleSaveCapsule = async () => {
     if (!message.trim()) {
       Alert.alert('Incomplete', 'Please write your message');
@@ -128,11 +119,16 @@ export default function CapsuleScreen() {
 
     setSaving(true);
     try {
-      await api.post('/capsules', {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('capsules').insert({
+        user_id: user?.id,
         message: message.trim(),
-        sealDate: selectedDate,
-        createdAt: new Date().toISOString(),
+        seal_date: selectedDate,
+        created_at: new Date().toISOString(),
       });
+
+      if (error) throw error;
+
       Alert.alert('Success', 'Your time capsule is sealed!', [
         { text: 'OK', onPress: () => {
           setMessage('');
@@ -148,39 +144,27 @@ export default function CapsuleScreen() {
     }
   };
 
-  // DELETE: Hapus capsule
   const handleDeleteCapsule = (id: string) => {
-    Alert.alert(
-      'Delete Capsule',
-      'Are you sure? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/capsules/${id}`);
-              fetchCapsules();
-              Alert.alert('Deleted', 'Capsule removed');
-            } catch (err) {
-              console.error(err);
-              Alert.alert('Error', 'Failed to delete');
-            }
-          }
+    Alert.alert('Delete Capsule', 'Are you sure? This action cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.from('capsules').delete().eq('id', id);
+          if (error) Alert.alert('Error', 'Failed to delete');
+          else fetchCapsules();
         }
-      ]
-    );
+      }
+    ]);
   };
 
-  // Format tanggal tampilan dari string
   const formatDisplayDate = (dateStr: string) => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  // Dapatkan status capsule
   const getCapsuleStatus = (sealDate: string) => {
     const canOpen = canOpenCapsule(sealDate);
     return {
@@ -194,114 +178,55 @@ export default function CapsuleScreen() {
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
       <StatusBar style="dark" backgroundColor={Colors.surface} />
       <Header />
-
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: headerHeight + 32,
-            paddingBottom: bottomNavHeight + 24,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 32, paddingBottom: bottomNavHeight + 24 }]} showsVerticalScrollIndicator={false}>
         <View style={[styles.bgBlur1, { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, right: -width * 0.2, top: width * 0.25 }]} />
         <View style={[styles.bgBlur2, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, left: -width * 0.2, bottom: width * 0.25 }]} />
-
         <View style={styles.heroSection}>
           <Text style={styles.heroBadge}>Reflection Portal</Text>
           <View style={styles.heroHeader}>
             <Text style={styles.heroTitle}>A Letter to Future You.</Text>
-            <Text style={styles.heroQuote}>
-              &quot;The best time to plant a tree was 20 years ago. The second best time is now.&quot;
-            </Text>
+            <Text style={styles.heroQuote}>&quot;The best time to plant a tree was 20 years ago. The second best time is now.&quot;</Text>
           </View>
         </View>
-
         <View style={styles.editorGrid}>
           <View style={[styles.textAreaContainer]}>
             <Text style={styles.inputLabel}>Your Message (Hidden until seal date)</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Write something only your future self can read..."
-              placeholderTextColor={Colors.outline + '66'}
-              multiline
-              value={message}
-              onChangeText={setMessage}
-              textAlignVertical="top"
-            />
-            <View style={styles.inputFooter}>
-              <MaterialIcons name="lock" size={16} color={Colors.secondaryFixedDim} />
-              <Text style={styles.inputFooterText}>This message will be encrypted</Text>
-            </View>
+            <TextInput style={styles.textInput} placeholder="Write something only your future self can read..." placeholderTextColor={Colors.outline + '66'} multiline value={message} onChangeText={setMessage} textAlignVertical="top" />
+            <View style={styles.inputFooter}><MaterialIcons name="lock" size={16} color={Colors.secondaryFixedDim} /><Text style={styles.inputFooterText}>This message will be encrypted</Text></View>
           </View>
-
           <View style={styles.sidebar}>
             <View style={[styles.dateCard]}>
               <Text style={styles.dateLabel}>Seal Until (YYYY-MM-DD)</Text>
-              
               <View style={styles.dateInputWrapper}>
-                <TextInput
-                  style={styles.dateInput}
-                  placeholder="2022-02-28"
-                  placeholderTextColor={Colors.outline + '66'}
-                  value={selectedDate}
-                  onChangeText={setSelectedDate}
-                />
+                <TextInput style={styles.dateInput} placeholder="2025-12-31" placeholderTextColor={Colors.outline + '66'} value={selectedDate} onChangeText={setSelectedDate} />
                 <MaterialIcons name="calendar-today" size={24} color={Colors.secondaryFixedDim} />
               </View>
-
               <View style={styles.quickSelect}>
                 <Text style={styles.quickSelectLabel}>Quick Select</Text>
                 <View style={styles.quickSelectButtons}>
                   {quickSelectDates.map((label, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.quickSelectButton}
-                      activeOpacity={0.7}
-                      onPress={() => quickSelectDate(label)}
-                    >
-                      <Text style={styles.quickSelectButtonText}>
-                        {label}
-                      </Text>
+                    <TouchableOpacity key={index} style={styles.quickSelectButton} activeOpacity={0.7} onPress={() => quickSelectDate(label)}>
+                      <Text style={styles.quickSelectButtonText}>{label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
             </View>
-
             <View style={styles.imageCard}>
               <Image source={{ uri: CAPSULE_IMAGE }} style={styles.capsuleImage} resizeMode="cover" />
               <View style={styles.imageOverlay} />
-              <View style={styles.imageCaption}>
-                <Text style={styles.imageCaptionText}>Your words will remain encrypted and silent until the chosen horizon.</Text>
-              </View>
+              <View style={styles.imageCaption}><Text style={styles.imageCaptionText}>Your words will remain encrypted and silent until the chosen horizon.</Text></View>
             </View>
           </View>
         </View>
-
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.saveButton}
-            activeOpacity={0.8}
-            onPress={handleSaveCapsule}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={Colors.onPrimary} />
-            ) : (
-              <>
-                <Text style={styles.saveButtonText}>Seal Capsule</Text>
-                <MaterialIcons name="lock" size={18} color={Colors.onPrimary} />
-              </>
-            )}
+          <TouchableOpacity style={styles.saveButton} activeOpacity={0.8} onPress={handleSaveCapsule} disabled={saving}>
+            {saving ? <ActivityIndicator color={Colors.onPrimary} /> : <><Text style={styles.saveButtonText}>Seal Capsule</Text><MaterialIcons name="lock" size={18} color={Colors.onPrimary} /></>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.viewButton} activeOpacity={0.7} onPress={fetchCapsules}>
-            <MaterialIcons name="refresh" size={18} color={Colors.secondary} />
-            <Text style={styles.viewButtonText}>Refresh</Text>
+            <MaterialIcons name="refresh" size={18} color={Colors.secondary} /><Text style={styles.viewButtonText}>Refresh</Text>
           </TouchableOpacity>
         </View>
-
         <View style={styles.recentSection}>
           <Text style={styles.recentTitle}>My Time Capsules</Text>
           {loading ? (
@@ -314,28 +239,17 @@ export default function CapsuleScreen() {
           ) : (
             <View style={styles.recentGrid}>
               {capsules.map((item) => {
-                const status = getCapsuleStatus(item.sealDate);
+                const status = getCapsuleStatus(item.seal_date);
                 return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.recentCard}
-                    activeOpacity={0.7}
-                    onPress={() => handleOpenCapsule(item)}
-                  >
+                  <TouchableOpacity key={item.id} style={styles.recentCard} activeOpacity={0.7} onPress={() => handleOpenCapsule(item)}>
                     <View style={styles.recentCardHeader}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <MaterialIcons name={status.icon as any} size={20} color={status.color} />
-                        <Text style={[styles.recentCardDate, { color: status.color }]}>
-                          {status.text} - Opens {formatDisplayDate(item.sealDate)}
-                        </Text>
+                        <Text style={[styles.recentCardDate, { color: status.color }]}>{status.text} - Opens {formatDisplayDate(item.seal_date)}</Text>
                       </View>
-                      <TouchableOpacity onPress={() => handleDeleteCapsule(item.id)}>
-                        <MaterialIcons name="delete-outline" size={20} color={Colors.error} />
-                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteCapsule(item.id)}><MaterialIcons name="delete-outline" size={20} color={Colors.error} /></TouchableOpacity>
                     </View>
-                    <Text style={styles.recentCardText} numberOfLines={1}>
-                      {status.text === 'Locked' ? '🔒 Message hidden until seal date' : `📖 ${item.message.substring(0, 60)}...`}
-                    </Text>
+                    <Text style={styles.recentCardText} numberOfLines={1}>{status.text === 'Locked' ? '🔒 Message hidden until seal date' : `📖 ${item.message.substring(0, 60)}...`}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -343,33 +257,19 @@ export default function CapsuleScreen() {
           )}
         </View>
       </ScrollView>
-
       <BottomNav activeTab="capsule" />
-
-      {/* Modal untuk menampilkan isi capsule */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={showContentModal}
-        onRequestClose={() => setShowContentModal(false)}
-      >
+      <Modal animationType="fade" transparent={true} visible={showContentModal} onRequestClose={() => setShowContentModal(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowContentModal(false)}>
           <View style={styles.contentModal}>
             <View style={styles.contentModalHeader}>
               <MaterialIcons name="lock-open" size={24} color={Colors.secondary} />
               <Text style={styles.contentModalTitle}>Your Time Capsule</Text>
-              <TouchableOpacity onPress={() => setShowContentModal(false)}>
-                <MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} />
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowContentModal(false)}><MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} /></TouchableOpacity>
             </View>
             <View style={styles.contentModalBody}>
-              <Text style={styles.contentModalDate}>
-                Sealed on: {selectedCapsule && formatDisplayDate(selectedCapsule.createdAt)}
-              </Text>
+              <Text style={styles.contentModalDate}>Sealed on: {selectedCapsule && formatDisplayDate(selectedCapsule.created_at)}</Text>
               <Text style={styles.contentModalMessage}>{capsuleContent}</Text>
-              <Text style={styles.contentModalFooter}>
-                From your past self to your present self 💫
-              </Text>
+              <Text style={styles.contentModalFooter}>From your past self to your present self 💫</Text>
             </View>
           </View>
         </Pressable>
@@ -402,14 +302,7 @@ const styles = StyleSheet.create({
   quickSelect: { gap: 12 },
   quickSelectLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 1.6, textTransform: 'uppercase', color: Colors.onSurfaceVariant },
   quickSelectButtons: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  quickSelectButton: { 
-    paddingHorizontal: 20, 
-    paddingVertical: 10, 
-    backgroundColor: Colors.surfaceContainerHigh, 
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.outlineVariant + '30',
-  },
+  quickSelectButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 20, borderWidth: 1, borderColor: Colors.outlineVariant + '30' },
   quickSelectButtonText: { fontSize: 13, fontWeight: '500', color: Colors.onSurfaceVariant },
   imageCard: { aspectRatio: 1, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   capsuleImage: { width: '100%', height: '100%', opacity: 0.9 },

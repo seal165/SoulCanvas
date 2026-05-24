@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, Href } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { supabase } from '../../services/supabase';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -15,18 +15,18 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+  if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
     setLoading(true);
-    
-    // Simulasi proses login
-    setTimeout(async () => {
-      // Simpan status login
-      await AsyncStorage.setItem('isLoggedIn', 'true');
-      await AsyncStorage.setItem('userEmail', email);
-      
-      setLoading(false);
-      // Ganti ke halaman utama (home)
-      router.replace('/(tabs)' as Href);
-    }, 1500);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setLoading(false);
+    if (error) Alert.alert('Login Failed', error.message);
+    else router.replace('/(tabs)');
   };
 
   return (

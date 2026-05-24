@@ -18,178 +18,87 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api as appApi } from '../../services/api';
+import { api } from '../../services/api';
+import { supabase } from '../../services/supabase';
 
 const { width } = Dimensions.get('window');
 
 // Fungsi generate abstract emotional art berdasarkan feeling user
 const generateAbstractArt = async (feeling: string): Promise<string> => {
-
   const lowerFeeling = feeling.toLowerCase();
 
   let auraColor = "";
   let emotionShape = "";
 
-  // ===== WARNA AURA BERDASARKAN FEELING =====
+  // ===== WARNA & BENTUK ABSTRAK BERDASARKAN FEELING =====
   if (
     lowerFeeling.includes("happy") ||
     lowerFeeling.includes("excited") ||
     lowerFeeling.includes("semangat") ||
-    lowerFeeling.includes("hope")
+    lowerFeeling.includes("hope") ||
+    lowerFeeling.includes("senang")
   ) {
-    auraColor = `
-    soft warm gold, pastel orange, creamy white,
-    glowing sunlight gradient
-    `;
-
-    emotionShape = `
-    flowing curved lines, floating dots,
-    airy open composition
-    `;
+    auraColor = "pastel orange, warm sunlight, glowing golden light leaks, creamy white";
+    emotionShape = "blooming soft floral shapes, bright ethereal glow, airy composition";
   }
-
   else if (
     lowerFeeling.includes("sad") ||
     lowerFeeling.includes("lonely") ||
     lowerFeeling.includes("empty") ||
-    lowerFeeling.includes("kecewa")
+    lowerFeeling.includes("kecewa") ||
+    lowerFeeling.includes("sedih")
   ) {
-    auraColor = `
-    muted blue, dusty gray, soft navy,
-    faded cold gradient
-    `;
-
-    emotionShape = `
-    thin drifting lines, subtle particles,
-    large negative space
-    `;
+    auraColor = "muted indigo, cold pale blue, dusty grey, faded shadowy vignette";
+    emotionShape = "isolated drooping soft petal silhouette, heavy misty blur, melancholic empty space";
   }
-
   else if (
     lowerFeeling.includes("love") ||
     lowerFeeling.includes("romantic") ||
-    lowerFeeling.includes("sayang")
+    lowerFeeling.includes("sayang") ||
+    lowerFeeling.includes("cinta")
   ) {
-    auraColor = `
-    blush pink, warm beige, soft peach,
-    delicate glowing tones
-    `;
-
-    emotionShape = `
-    smooth organic curves,
-    soft floating circles
-    `;
+    auraColor = "blush pink, soft magenta, warm peach, gentle glowing flares";
+    emotionShape = "overlapping soft floral silhouettes, intimate dreamy blur";
   }
-
   else if (
     lowerFeeling.includes("angry") ||
     lowerFeeling.includes("frustrated") ||
-    lowerFeeling.includes("stress")
+    lowerFeeling.includes("stress") ||
+    lowerFeeling.includes("marah")
   ) {
-    auraColor = `
-    deep crimson, dark charcoal, burnt orange,
-    dramatic contrast
-    `;
-
-    emotionShape = `
-    expressive abstract streaks,
-    sharp flowing lines,
-    scattered intense particles
-    `;
+    auraColor = "deep crimson, dark amber, intense burnt orange, high contrast shadows";
+    emotionShape = "intense glowing abstract botanical shapes, dramatic heavy grain, chaotic light leaks";
   }
-
   else if (
     lowerFeeling.includes("calm") ||
     lowerFeeling.includes("peace") ||
     lowerFeeling.includes("tenang")
   ) {
-    auraColor = `
-    sage green, misty white, pale blue,
-    soft atmospheric tones
-    `;
-
-    emotionShape = `
-    minimal wave lines,
-    balanced composition,
-    subtle tiny dots
-    `;
+    auraColor = "sage green, soft pale teal, misty white, gentle atmospheric light";
+    emotionShape = "smooth floating petal shapes, balanced serene blur, quiet mist";
   }
-
-  // ===== DEFAULT AESTHETIC =====
   else {
-    auraColor = `
-    muted monochrome, soft gray, warm white,
-    elegant neutral palette
-    `;
-
-    emotionShape = `
-    abstract flowing lines,
-    floating minimalist particles
-    `;
+    auraColor = "muted vintage tones, soft creamy white, subtle warm light leaks";
+    emotionShape = "gentle out of focus botanical blur, mysterious glowing silhouettes";
   }
 
-  // ===== MAIN PROMPT =====
-  const prompt = `
-  modern minimalist abstract emotional artwork inspired by "${feeling}",
-  
-  ${auraColor},
-  ${emotionShape},
+  const prompt = `ethereal out of focus photography representing "${feeling}", ${emotionShape}, ${auraColor}, vintage film grain texture, light leaks, dreamy double exposure effect, glowing blurred botanical silhouettes, soft pastel polaroid aesthetic, macro photography blur, visually poetic, no sharp edges, no humans, no mosaic, no clear objects, no typography`;
 
-  clean contemporary aesthetic,
-  emotional aura visualization,
-  soft gradients,
-  elegant negative space,
-  subtle grain texture,
-  premium gallery poster style,
-  calm atmospheric composition,
-  simple modern art,
-  visually poetic,
-  
-  no humans,
-  no objects,
-  no typography,
-  no watermark
-  `;
-
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}
-  ?width=1920
-  &height=1920
-  &model=flux
-  &enhance=true
-  &nologo=true
-  &seed=${Date.now()}`;
+  const formattedPrompt = encodeURIComponent(prompt.trim().replace(/\s+/g, ' '));
+  return `https://image.pollinations.ai/prompt/${formattedPrompt}?width=1920&height=1920&model=flux&enhance=true&nologo=true&seed=${Date.now()}`;
 };
 
-// Fungsi untuk mendapatkan caption inspiratif
 const getInspirationalCaption = (feeling: string): string => {
-  const feelingLower = feeling.toLowerCase();
-  
-  if (feelingLower.includes('happy') || feelingLower.includes('joy')) {
-    return "A soft, warm glow radiates from your being.";
-  }
-  if (feelingLower.includes('sad') || feelingLower.includes('melancholy')) {
-    return "Quiet shadows dance in gentle stillness.";
-  }
-  if (feelingLower.includes('love') || feelingLower.includes('cinta')) {
-    return "Two hearts merge into one beautiful form.";
-  }
-  if (feelingLower.includes('calm') || feelingLower.includes('peace')) {
-    return "Serenity flows like a gentle river.";
-  }
-  if (feelingLower.includes('excited') || feelingLower.includes('semangat')) {
-    return "Bold energy bursts with vibrant possibility.";
-  }
-  if (feelingLower.includes('anxious') || feelingLower.includes('cemas')) {
-    return "Waves of emotion finding their rhythm.";
-  }
-  if (feelingLower.includes('hopeful') || feelingLower.includes('harapan')) {
-    return "A single light pierces through the darkness.";
-  }
-  if (feelingLower.includes('lonely') || feelingLower.includes('kesepian')) {
-    return "One soul learning to dance alone.";
-  }
-  
-  return "Your emotion speaks in colors and shapes.";
+  const f = feeling.toLowerCase();
+  if (f.includes('happy') || f.includes('joy') || f.includes('senang')) return "A soft, warm glow radiates from your being.";
+  if (f.includes('sad') || f.includes('melancholy') || f.includes('sedih')) return "Quiet shadows dance in gentle stillness.";
+  if (f.includes('love') || f.includes('cinta') || f.includes('sayang')) return "Two hearts merge into one beautiful form.";
+  if (f.includes('calm') || f.includes('peace') || f.includes('tenang')) return "Serenity flows like a gentle river.";
+  if (f.includes('excited') || f.includes('semangat')) return "Bold energy bursts with vibrant possibility.";
+  if (f.includes('anxious') || f.includes('cemas') || f.includes('stress')) return "Waves of emotion finding their rhythm.";
+  if (f.includes('hopeful') || f.includes('harapan')) return "A single light pierces through the darkness.";
+  if (f.includes('lonely') || f.includes('kesepian')) return "One soul learning to dance alone.";
+  return "Your emotion speaks in colors and light.";
 };
 
 export default function ComposeScreen() {
@@ -211,15 +120,8 @@ export default function ComposeScreen() {
         Alert.alert('Permission needed', 'Please allow microphone access');
         return;
       }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
@@ -230,13 +132,10 @@ export default function ComposeScreen() {
 
   const stopRecording = async () => {
     if (!recording) return;
-    
     setIsRecording(false);
     await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    setVoiceNoteUri(uri);
+    setVoiceNoteUri(recording.getURI());
     setRecording(null);
-    
     Alert.alert('Voice Note Saved', 'Your voice note has been recorded.');
   };
 
@@ -252,30 +151,35 @@ export default function ComposeScreen() {
       const imageUrl = await generateAbstractArt(feeling);
       const caption = getInspirationalCaption(feeling);
       
-      await appApi.post('/artworks', {
-        feeling: feeling.trim(),
-        imageUrl: imageUrl,
-        caption: caption,
-        voiceNoteUri: voiceNoteUri || null,
-        generatedDate: new Date().toISOString(),
-      });
+      // Ambil user ID dari session
+      const { data: { user } } = await supabase.auth.getUser();
       
-      Alert.alert(
-        'Artwork Created',
-        `"${caption}"`,
-        [
-          { 
-            text: 'View in Gallery', 
-            onPress: () => router.push('/(tabs)/gallery')
-          },
-          { text: 'Create Another', style: 'cancel' }
-        ]
-      );
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in');
+        setGenerating(false);
+        return;
+      }
+
+      const { error } = await api.from('artworks').insert({
+        user_id: user.id,
+        feeling: feeling.trim(),
+        image_url: imageUrl,
+        caption: caption,
+        voice_note_uri: voiceNoteUri || null,
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      Alert.alert('Artwork Created', `"${caption}"`, [
+        { text: 'View in Gallery', onPress: () => router.push('/(tabs)/gallery') },
+        { text: 'Create Another', style: 'cancel' }
+      ]);
       
       setFeeling('');
       setVoiceNoteUri(null);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       Alert.alert('Error', 'Failed to generate artwork. Please try again.');
     } finally {
       setGenerating(false);
@@ -384,36 +288,13 @@ const styles = StyleSheet.create({
   inputCard: { backgroundColor: Colors.surfaceContainerLowest, padding: 28, borderRadius: 24, shadowColor: '#1c1c17', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 24, elevation: 2 },
   textArea: { minHeight: 180, fontSize: 20, fontWeight: '300', color: Colors.onSurface, padding: 0, lineHeight: 28 },
   toolsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, marginTop: 16, flexWrap: 'wrap', gap: 16 },
-  micButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12, 
-    paddingHorizontal: 20, 
-    paddingVertical: 10, 
-    backgroundColor: Colors.secondaryContainer + '33', 
-    borderRadius: 30 
-  },
+  micButton: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: Colors.secondaryContainer + '33', borderRadius: 30 },
   micButtonActive: { backgroundColor: Colors.secondaryContainer + '66' },
   voiceText: { fontSize: 12, fontWeight: '500', letterSpacing: 1, textTransform: 'uppercase', color: Colors.secondary },
   aiBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Colors.primaryContainer + '20', borderRadius: 20 },
   aiBadgeText: { fontSize: 10, fontWeight: '500', letterSpacing: 0.8, color: Colors.primary },
   actionSection: { alignItems: 'center', gap: 24, width: '100%', marginBottom: 48 },
-  generateButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    gap: 12, 
-    width: '100%', 
-    maxWidth: 280, 
-    paddingVertical: 16, 
-    backgroundColor: Colors.primary, 
-    borderRadius: 40,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
+  generateButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', maxWidth: 280, paddingVertical: 16, backgroundColor: Colors.primary, borderRadius: 40, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   generateButtonDisabled: { opacity: 0.7 },
   generateButtonText: { fontSize: 14, fontWeight: '500', letterSpacing: 1, color: Colors.onPrimary },
   backButton: { paddingVertical: 8 },

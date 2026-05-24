@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Platform, Alert } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter, Href } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Header, BottomNav } from '@/components/common';
+import { BottomNav, Header } from '@/components/common';
 import { Colors } from '@/constants/Colors';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Href, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/supabase';
 
 const PROFILE_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBiDZpI3fbOsPWBUQV5_3Vvu-unru3-0e1o1bHpY9uQaWQ68CpVWdJMaIeimqeEpn6hux2rq-uXkscGQqz26X4O5ygpdE3uHHfQ27oqr69uz6-7UoXXjlEAwDS5KoGKwovjG9s1CyBcFLeNiyDKajl9epDb2KNn92S6C2tKPQGb8fMF2w96YuvNpdPqmmPDCySTmKLnezmJv4b3sEMmsDcunKQRuOxSoK_Wgpb4RxofsQd3jDkoFDMZvpaHcnzfb8YbPJDDFejapsPI';
 
@@ -15,27 +16,28 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 80;
   const bottomNavHeight = 70 + (Platform.OS === 'ios' ? insets.bottom : 20);
+  const { session } = useAuth();
+  const [userData, setUserData] = useState({ fullName: '', email: '', avatarUrl: PROFILE_IMAGE });
+
+  useEffect(() => {
+    if (session?.user) {
+      setUserData({
+        fullName: session.user.user_metadata?.full_name || '',
+        email: session.user.email || '',
+        avatarUrl: session.user.user_metadata?.avatar_url || PROFILE_IMAGE,
+      });
+    }
+  }, [session]);
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            // Hapus status login
-            await AsyncStorage.removeItem('isLoggedIn');
-            await AsyncStorage.removeItem('userEmail');
-            await AsyncStorage.removeItem('userName');
-            // Arahkan ke halaman login
-            router.replace('/(tabs)/login' as Href);
-          }
+    Alert.alert('Sign Out', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => {
+          await supabase.auth.signOut();
+          router.replace('/(tabs)/login');
         }
-      ]
-    );
+      }
+    ]);
   };
 
   const menuItems = [
@@ -60,14 +62,14 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarBorder}>
-              <Image source={{ uri: PROFILE_IMAGE }} style={styles.avatar} />
+              <Image source={{ uri: userData.avatarUrl }} style={styles.avatar} />
             </View>
             <TouchableOpacity style={styles.editButton}>
               <MaterialIcons name="edit" size={16} color={Colors.onPrimary} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.name}>Elena Solstice</Text>
-          <Text style={styles.email}>elena.solstice@canvas.art</Text>
+          <Text style={styles.name}>{userData.fullName || 'Art Lover'}</Text>
+          <Text style={styles.email}>{userData.email}</Text>
         </View>
 
         {/* Menu Items */}
